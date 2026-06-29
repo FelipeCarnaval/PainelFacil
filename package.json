@@ -1,0 +1,28 @@
+{
+  "name": "painelfacil",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Dashboards automáticos a partir de qualquer planilha (Excel/CSV) — 100% local, sem IA paga.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "lucide-react": "^1.21.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "recharts": "^3.9.0",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^6.0.2",
+    "@vitest/coverage-v8": "^4.1.9",
+    "vite": "^8.1.0",
+    "vitest": "^4.1.9"
+  }
+}
