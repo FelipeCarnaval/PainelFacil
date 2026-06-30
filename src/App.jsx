@@ -7,6 +7,7 @@ import SheetPicker from './components/SheetPicker'
 import FilterBar from './components/FilterBar'
 import OverridePanel from './components/OverridePanel'
 import Dashboard from './components/Dashboard'
+import DashboardSkeleton from './components/DashboardSkeleton'
 import PerfPanel from './components/PerfPanel'
 import ErrorBoundary from './components/ErrorBoundary'
 
@@ -82,6 +83,19 @@ export default function App() {
     ds.reset()
   }
 
+  // Drill-down: clicar numa barra/fatia filtra o painel por aquela categoria
+  // (clicar de novo no mesmo valor limpa o filtro).
+  function drill(dim, value) {
+    setDimFilters((prev) => {
+      const cur = prev[dim]
+      const only = cur && cur.size === 1 && cur.has(value)
+      const next = { ...prev }
+      if (only) delete next[dim]
+      else next[dim] = new Set([value])
+      return next
+    })
+  }
+
   async function exportExcel() {
     const rows = await engine.exportRows(token, sheetIndex, overrides, filters, tableState)
     const { exportToExcel } = await import('./lib/parseFile') // xlsx sob demanda (fora do bundle inicial)
@@ -144,9 +158,7 @@ export default function App() {
           </div>
         )}
 
-        {stage === 'analyzing' && !meta && (
-          <div className="state-center"><div className="spinner" /><p>Analisando os dados…</p></div>
-        )}
+        {stage === 'analyzing' && !meta && <DashboardSkeleton />}
 
         {meta && stage !== 'error' && (
           <div className={working ? 'is-busy' : ''}>
@@ -226,11 +238,11 @@ export default function App() {
                   <ErrorBoundary resetKey={token + '|' + JSON.stringify(overrides)}>
                     <Dashboard
                       view={view} profiles={meta.profiles} tableState={tableState}
-                      setTableState={setTableState} onExport={exportExcel}
+                      setTableState={setTableState} onExport={exportExcel} onDrill={drill}
                     />
                   </ErrorBoundary>
                 ) : (
-                  <div className="state-center"><div className="spinner" /><p>Calculando visão…</p></div>
+                  <DashboardSkeleton />
                 )}
               </>
             )}
