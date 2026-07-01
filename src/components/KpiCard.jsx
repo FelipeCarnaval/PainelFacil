@@ -66,9 +66,10 @@ function TrendBadge({ trend }) {
 export default function KpiCard({ label, value, kind, agg, measure, percent, spark, trend, index = 0 }) {
   const { Icon, tone } = metaFor({ agg, measure, percent })
   const shown = useCountUp(value)
+  const isMoney = agg !== 'count' && !percent && MONEY_RX.test(measure || '')
   const num =
     kind === 'int' ? fmtInt(shown) : Math.abs(shown) >= 10000 ? fmtCompact(shown) : fmtNum(shown)
-  const display = percent ? `${num}%` : num
+  const display = percent ? `${num}%` : isMoney ? `R$ ${num}` : num
 
   return (
     <div

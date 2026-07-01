@@ -117,22 +117,22 @@ export async function analyze(token, sheetIndex, overrides = {}) {
 }
 
 /** Calcula a visão (filtros + tabela). Memoizada por (análise + assinatura dos filtros). */
-export async function view(token, sheetIndex, overrides, filters = {}, tableState = {}) {
+export async function view(token, sheetIndex, overrides, filters = {}, tableState = {}, opts = {}) {
   const key = keyOf(token, sheetIndex, overrides)
-  const sig = key + '||' + viewSignature(filters, tableState)
+  const sig = key + '||' + viewSignature(filters, tableState, opts)
   if (viewCache.has(sig)) return { ...viewCache.get(sig), cached: true }
 
   let payload
   if (usingWorker()) {
-    payload = await send('view', { key, filters, tableState })
+    payload = await send('view', { key, filters, tableState, opts })
     if (payload && payload.needAnalyze) {
       await analyze(token, sheetIndex, overrides) // reconstrói o engine no worker
-      payload = await send('view', { key, filters, tableState })
+      payload = await send('view', { key, filters, tableState, opts })
     }
   } else {
     let eng = engineCache.get(key)
     if (!eng) { analyzeSyncToMeta(token, sheetIndex, overrides); eng = engineCache.get(key) }
-    payload = computeView(eng.engine, eng.dash, filters, tableState)
+    payload = computeView(eng.engine, eng.dash, filters, tableState, opts)
   }
   lruSet(viewCache, sig, payload, VIEW_CACHE_MAX)
   return payload

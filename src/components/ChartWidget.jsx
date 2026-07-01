@@ -181,15 +181,27 @@ function pieBody(data, theme, height, onDrill) {
         </ResponsiveContainer>
       </div>
       <ul className="pie-legend">
-        {data.map((d, i) => (
-          <li key={i} className={click && !d.other ? 'clickable' : ''}
-            onClick={click && !d.other ? () => click(d.name) : undefined}>
-            <span className="pl-dot" style={{ background: colorAt(d, i) }} />
-            <span className="pl-name" title={d.name}>{d.name}</span>
-            <span className="pl-val">{fmtNum(d.value)}</span>
-            <span className="pl-pct">{total ? Math.round((d.value / total) * 100) : 0}%</span>
-          </li>
-        ))}
+        {data.map((d, i) => {
+          const clickable = click && !d.other
+          return (
+            <li
+              key={i} className={clickable ? 'clickable' : ''}
+              {...(clickable
+                ? {
+                    role: 'button', tabIndex: 0,
+                    'aria-label': `Filtrar por ${d.name}`,
+                    onClick: () => click(d.name),
+                    onKeyDown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); click(d.name) } },
+                  }
+                : {})}
+            >
+              <span className="pl-dot" style={{ background: colorAt(d, i) }} />
+              <span className="pl-name" title={d.name}>{d.name}</span>
+              <span className="pl-val">{fmtNum(d.value)}</span>
+              <span className="pl-pct">{total ? Math.round((d.value / total) * 100) : 0}%</span>
+            </li>
+          )
+        })}
       </ul>
     </div>
   )
@@ -261,8 +273,9 @@ function Toolbar({ exportRef, title, onToggleFull, fullIcon }) {
   )
 }
 
-function ChartCard({ Icon, title, drillable, height, modalHeight, renderBody }) {
+function ChartCard({ Icon, title, drillable, height, modalHeight, renderBody, plotLabel }) {
   const [full, setFull] = useState(false)
+  const plotAria = plotLabel ? { role: 'img', 'aria-label': plotLabel } : {}
   const cardRef = useRef(null)
   const modalRef = useRef(null)
   const modalCardRef = useRef(null)
@@ -284,7 +297,7 @@ function ChartCard({ Icon, title, drillable, height, modalHeight, renderBody }) 
           {Icon && <Icon size={16} className="chart-ic" />}{title}
           {drillable && <span className="drill-hint no-print">clique para filtrar</span>}
         </h3>
-        <div className="chart-body">{renderBody(height)}</div>
+        <div className="chart-body" {...plotAria}>{renderBody(height)}</div>
       </div>
 
       {full && (
@@ -293,7 +306,7 @@ function ChartCard({ Icon, title, drillable, height, modalHeight, renderBody }) 
             <Toolbar exportRef={modalRef} title={title} onToggleFull={() => setFull(false)} fullIcon="close" />
             <div className="chart-export" ref={modalRef}>
               <h3>{Icon && <Icon size={16} className="chart-ic" />}{title}</h3>
-              <div className="chart-body">{renderBody(modalHeight)}</div>
+              <div className="chart-body" {...plotAria}>{renderBody(modalHeight)}</div>
             </div>
           </div>
         </div>
@@ -358,6 +371,9 @@ export default function ChartWidget({ chart, onDrill }) {
   }
 
   return (
-    <ChartCard Icon={Icon} title={title} drillable={drillable} height={height} modalHeight={modalHeight} renderBody={renderBody} />
+    <ChartCard
+      Icon={Icon} title={title} drillable={drillable} height={height} modalHeight={modalHeight}
+      renderBody={renderBody} plotLabel={chart.type === 'pie' ? undefined : title}
+    />
   )
 }

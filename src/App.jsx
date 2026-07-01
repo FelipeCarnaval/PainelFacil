@@ -6,6 +6,7 @@ import Dropzone from './components/Dropzone'
 import SheetPicker from './components/SheetPicker'
 import FilterBar from './components/FilterBar'
 import ActiveFilters from './components/ActiveFilters'
+import ChartControls from './components/ChartControls'
 import OverridePanel from './components/OverridePanel'
 import Dashboard from './components/Dashboard'
 import DashboardSkeleton from './components/DashboardSkeleton'
@@ -22,6 +23,7 @@ export default function App() {
   const [dateFrom, setDateFrom] = useState(null)
   const [dateTo, setDateTo] = useState(null)
   const [tableState, setTableState] = useState(defaultTableState())
+  const [chartOpts, setChartOpts] = useState({ topN: 10, gran: 'auto' })
   const [view, setView] = useState(null)
   const [viewBusy, setViewBusy] = useState(false)
   const [viewError, setViewError] = useState(null)
@@ -56,6 +58,12 @@ export default function App() {
     [dimFilters, dateFrom, dateTo, meta],
   )
 
+  // Opções dos gráficos (Top N / granularidade) que também recalculam a visão.
+  const viewOpts = useMemo(
+    () => ({ topN: chartOpts.topN, gran: chartOpts.gran === 'auto' ? null : chartOpts.gran }),
+    [chartOpts],
+  )
+
   // Pede a VISÃO (filtros + agregações + tabela) ao worker — fora da UI thread.
   useEffect(() => {
     if (!meta || meta.rowCount === 0) { setView(null); return }
@@ -64,7 +72,7 @@ export default function App() {
     setViewBusy(true)
     setViewError(null)
     engine
-      .view(token, sheetIndex, overrides, filters, tableState)
+      .view(token, sheetIndex, overrides, filters, tableState, viewOpts)
       .then((v) => {
         if (cancelled || my !== viewSeq.current) return
         setView(v)
@@ -76,7 +84,7 @@ export default function App() {
       })
       .finally(() => { if (!cancelled && my === viewSeq.current) setViewBusy(false) })
     return () => { cancelled = true }
-  }, [meta, filters, tableState, token, sheetIndex, overrides])
+  }, [meta, filters, tableState, token, sheetIndex, overrides, viewOpts])
 
   function newFile() {
     setShowPanel(false)
@@ -187,7 +195,7 @@ export default function App() {
                   {meta.headerRows > 1 && ` · cabeçalho de ${meta.headerRows} linhas combinado`}
                   {meta.droppedTop > 0 && ` · ${meta.droppedTop} linha(s) de topo ignoradas`}
                   {meta.droppedTotals > 0 && ` · ${meta.droppedTotals} linha(s) de total removidas`}
-                  {working && <span className="busy-badge"><Loader2 size={13} className="spin" /> atualizando…</span>}
+                  {working && <span className="busy-badge" role="status"><Loader2 size={13} className="spin" /> atualizando…</span>}
                 </span>
               </div>
               <div className="info-actions no-print">
@@ -246,6 +254,11 @@ export default function App() {
                   <ActiveFilters
                     dimFilters={dimFilters} dateFrom={dateFrom} dateTo={dateTo} dateCol={meta.dash.dateCol}
                     onClearValue={clearFilterValue} onClearDate={clearDate} onClearAll={clearAllFilters}
+                  />
+                  <ChartControls
+                    opts={chartOpts} setOpts={setChartOpts}
+                    showTopN={meta.dash.widgets.some((w) => ['bar', 'bars', 'pie'].includes(w.type))}
+                    hasDate={!!meta.dash.dateCol}
                   />
                 </div>
                 {viewError ? (

@@ -324,6 +324,15 @@ svg { flex: none; }
 }
 .af-clear:hover { color: var(--danger); text-decoration: underline; }
 
+/* ---------- Controles dos gráficos (Top N / granularidade) ---------- */
+.chart-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; margin: 0 0 18px; }
+.cc-item { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; font-weight: 600; color: var(--text-dim); }
+.cc-item select {
+  background: var(--surface); border: 1px solid var(--border); color: var(--text);
+  border-radius: var(--radius-sm); padding: 6px 9px; font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.cc-item select:focus-visible { outline: none; border-color: var(--accent); box-shadow: var(--ring); }
+
 /* ---------- MultiSelect ---------- */
 .ms { position: relative; }
 .ms-btn {

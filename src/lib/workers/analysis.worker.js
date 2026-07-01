@@ -56,7 +56,7 @@ self.onmessage = (e) => {
       reply(id, runAnalyze(e.data.token, e.data.sheetIndex, e.data.overrides))
     } else if (type === 'view') {
       if (!current || current.key !== e.data.key) return reply(id, { needAnalyze: true })
-      reply(id, computeView(current.engine, current.dash, e.data.filters, e.data.tableState))
+      reply(id, computeView(current.engine, current.dash, e.data.filters, e.data.tableState, e.data.opts))
     } else if (type === 'release') {
       store.delete(e.data.token)
       if (current && current.key.startsWith(e.data.token + '|')) current = null

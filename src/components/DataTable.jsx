@@ -41,11 +41,20 @@ export default function DataTable({ table, profiles, tableState, setTableState, 
         <table className="data">
           <thead>
             <tr>
-              {cols.map((c) => (
-                <th key={c} onClick={() => clickSort(c)} className={`th-${typeOf[c]} ${sort.col === c ? 'sorted' : ''}`}>
-                  {c} {sort.col === c ? (sort.dir === 1 ? '▲' : '▼') : ''}
-                </th>
-              ))}
+              {cols.map((c) => {
+                const active = sort.col === c
+                return (
+                  <th
+                    key={c} scope="col" role="button" tabIndex={0}
+                    aria-sort={active ? (sort.dir === 1 ? 'ascending' : 'descending') : 'none'}
+                    onClick={() => clickSort(c)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); clickSort(c) } }}
+                    className={`th-${typeOf[c]} ${active ? 'sorted' : ''}`}
+                  >
+                    {c} {active ? (sort.dir === 1 ? '▲' : '▼') : ''}
+                  </th>
+                )
+              })}
             </tr>
           </thead>
           <tbody>

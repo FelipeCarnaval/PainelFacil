@@ -1,5 +1,9 @@
 # PainelFácil — Dashboards automáticos a partir de qualquer planilha
 
+[![CI](https://github.com/FelipeCarnaval/PainelFacil/actions/workflows/ci.yml/badge.svg)](https://github.com/FelipeCarnaval/PainelFacil/actions/workflows/ci.yml)
+[![Deploy](https://github.com/FelipeCarnaval/PainelFacil/actions/workflows/deploy.yml/badge.svg)](https://github.com/FelipeCarnaval/PainelFacil/actions/workflows/deploy.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 Suba um **Excel** ou **CSV** (relatórios do **Benner Saúde**, **Benner Corporativo**, **MV**, ou qualquer outro) e o PainelFácil **detecta as colunas e monta o painel sozinho**: cards de KPI, gráficos, matriz e tabela — sem você configurar nada.
 
 > 100% local e gratuito. Tudo roda **no seu navegador**: nenhum arquivo é enviado para a internet, sem login, sem chave de API, sem IA paga.

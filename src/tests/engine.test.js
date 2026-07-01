@@ -178,3 +178,20 @@ describe('computeView — dim nos gráficos (para drill-down)', () => {
     }
   })
 })
+
+describe('computeView — Top N e granularidade forçados', () => {
+  const { dash, engine } = setup()
+
+  it('limita o ranking ao Top N e força a granularidade', () => {
+    const view = computeView(engine, dash, {}, {}, { topN: 2, gran: 'year' })
+    for (const c of view.charts) {
+      if (c.type === 'bar' || c.type === 'bars') expect(c.data.length).toBeLessThanOrEqual(2)
+      if (c.type === 'pie') expect(c.data.length).toBeLessThanOrEqual(3) // top 2 + "Outros"
+      if (c.type === 'line' || c.type === 'lines') expect(c.gran).toBe('year')
+    }
+  })
+
+  it('a assinatura de cache muda com as opções dos gráficos', () => {
+    expect(viewSignature({}, {}, { topN: 5 })).not.toBe(viewSignature({}, {}, { topN: 10 }))
+  })
+})
