@@ -4,6 +4,8 @@ Suba um **Excel** ou **CSV** (relatórios do **Benner Saúde**, **Benner Corpora
 
 > 100% local e gratuito. Tudo roda **no seu navegador**: nenhum arquivo é enviado para a internet, sem login, sem chave de API, sem IA paga.
 
+🔗 **Demo ao vivo:** https://felipecarnaval.github.io/PainelFacil/
+
 ## O que ele faz
 
 1. **Lê o arquivo** (`.xlsx`, `.xls`, `.csv`) direto no navegador.
@@ -62,6 +64,10 @@ src/
 ```
 
 ## Recursos
+- **KPIs com tendência:** cada card mostra uma **mini-linha (sparkline)** por período e a **variação %** do último período vs. o anterior, com contagem animada.
+- **Gráficos grandes, um por linha:** linha em **área com gradiente**, barras horizontais e **rosca com legenda lateral** — que mostra todos os valores mesmo com muitas categorias. Cores acompanham o tema claro/escuro.
+- **Interação:** **tela cheia**, **download de cada gráfico em PNG/JPG** e **drill-down** (clique numa barra/fatia/legenda para filtrar o painel inteiro).
+- **Filtros ativos:** chips removíveis mostram e limpam o que está filtrado no momento.
 - **Cabeçalho de múltiplas linhas:** quando o relatório tem um nível de **grupo** sobre as colunas
   (ex.: `2024`/`2025` mesclados sobre `Apresentado`/`Glosa`), os níveis são combinados em
   `2024 · Apresentado` automaticamente.
@@ -77,6 +83,5 @@ src/
 - O painel não persiste os **dados** entre recarregamentos (por design/LGPD) — só a configuração; é preciso subir o arquivo de novo.
 
 ## Próximos passos (ideias)
-- Drill-down e tela cheia nos gráficos; KPIs com tendência.
-- Acessibilidade WCAG AA.
+- Acessibilidade WCAG AA completa.
 - Backend opcional para compartilhar painéis salvos.

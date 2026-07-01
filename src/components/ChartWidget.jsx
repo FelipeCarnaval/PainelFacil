@@ -265,12 +265,14 @@ function ChartCard({ Icon, title, drillable, height, modalHeight, renderBody }) 
   const [full, setFull] = useState(false)
   const cardRef = useRef(null)
   const modalRef = useRef(null)
+  const modalCardRef = useRef(null)
 
   useEffect(() => {
     if (!full) return
     const onKey = (e) => e.key === 'Escape' && setFull(false)
     document.addEventListener('keydown', onKey)
     document.body.style.overflow = 'hidden'
+    modalCardRef.current?.focus() // acessibilidade: joga o foco para dentro do diálogo
     return () => { document.removeEventListener('keydown', onKey); document.body.style.overflow = '' }
   }, [full])
 
@@ -287,7 +289,7 @@ function ChartCard({ Icon, title, drillable, height, modalHeight, renderBody }) 
 
       {full && (
         <div className="chart-modal no-print" role="dialog" aria-modal="true" aria-label={title} onClick={() => setFull(false)}>
-          <div className="chart-modal-card" onClick={(e) => e.stopPropagation()}>
+          <div className="chart-modal-card" ref={modalCardRef} tabIndex={-1} onClick={(e) => e.stopPropagation()}>
             <Toolbar exportRef={modalRef} title={title} onToggleFull={() => setFull(false)} fullIcon="close" />
             <div className="chart-export" ref={modalRef}>
               <h3>{Icon && <Icon size={16} className="chart-ic" />}{title}</h3>

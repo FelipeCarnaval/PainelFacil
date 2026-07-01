@@ -306,6 +306,24 @@ svg { flex: none; }
 .date-range input:focus { outline: none; border-color: var(--accent); }
 .dr-label { font-weight: 600; }
 
+/* ---------- Filtros ativos (chips) ---------- */
+.active-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: -4px 0 18px; }
+.af-label { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--text-dim); }
+.af-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--primary-soft); color: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  border-radius: 999px; padding: 4px 10px; font-size: 12.5px; font-weight: 600; cursor: pointer;
+  transition: background .14s, border-color .14s;
+}
+.af-chip:hover { background: color-mix(in srgb, var(--accent) 16%, var(--surface)); border-color: var(--accent); }
+.af-chip-text { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.af-clear {
+  border: none; background: transparent; color: var(--text-dim);
+  font-size: 12.5px; font-weight: 600; cursor: pointer; padding: 4px 6px; border-radius: 6px;
+}
+.af-clear:hover { color: var(--danger); text-decoration: underline; }
+
 /* ---------- MultiSelect ---------- */
 .ms { position: relative; }
 .ms-btn {

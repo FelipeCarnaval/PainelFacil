@@ -5,6 +5,7 @@ import { useDataset } from './hooks/useDataset'
 import Dropzone from './components/Dropzone'
 import SheetPicker from './components/SheetPicker'
 import FilterBar from './components/FilterBar'
+import ActiveFilters from './components/ActiveFilters'
 import OverridePanel from './components/OverridePanel'
 import Dashboard from './components/Dashboard'
 import DashboardSkeleton from './components/DashboardSkeleton'
@@ -95,6 +96,22 @@ export default function App() {
       return next
     })
   }
+
+  // Remoção de filtros a partir dos chips de "Filtros ativos".
+  function clearFilterValue(dim, value) {
+    setDimFilters((prev) => {
+      const set = prev[dim]
+      if (!set) return prev
+      const ns = new Set(set)
+      ns.delete(value)
+      const next = { ...prev }
+      if (ns.size) next[dim] = ns
+      else delete next[dim]
+      return next
+    })
+  }
+  function clearDate() { setDateFrom(null); setDateTo(null) }
+  function clearAllFilters() { setDimFilters({}); setDateFrom(null); setDateTo(null) }
 
   async function exportExcel() {
     const rows = await engine.exportRows(token, sheetIndex, overrides, filters, tableState)
@@ -225,6 +242,10 @@ export default function App() {
                     dims={meta.dash.dims} dateCol={meta.dash.dateCol} dimOptions={meta.dimOptions}
                     dimFilters={dimFilters} setDimFilters={setDimFilters}
                     dateFrom={dateFrom} dateTo={dateTo} setDateFrom={setDateFrom} setDateTo={setDateTo}
+                  />
+                  <ActiveFilters
+                    dimFilters={dimFilters} dateFrom={dateFrom} dateTo={dateTo} dateCol={meta.dash.dateCol}
+                    onClearValue={clearFilterValue} onClearDate={clearDate} onClearAll={clearAllFilters}
                   />
                 </div>
                 {viewError ? (

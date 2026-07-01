@@ -42,10 +42,10 @@ export function parsePeriodHeader(header) {
     }
   }
   // mm/aaaa (competência numérica)
-  m = s.match(/^(\d{1,2})[/.\-](\d{4})$/)
+  m = s.match(/^(\d{1,2})[/.-](\d{4})$/)
   if (m && +m[1] >= 1 && +m[1] <= 12) return new Date(+m[2], +m[1] - 1, 1)
   // aaaa-mm / aaaa/mm
-  m = s.match(/^(\d{4})[/.\-](\d{1,2})$/)
+  m = s.match(/^(\d{4})[/.-](\d{1,2})$/)
   if (m && +m[2] >= 1 && +m[2] <= 12) return new Date(+m[1], +m[2] - 1, 1)
   // trimestre: t1/2025, q1-2025, 1t2025
   m = s.match(/^t([1-4])[\s./-]*(\d{4})$/) ||

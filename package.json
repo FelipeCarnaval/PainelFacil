@@ -4,13 +4,18 @@
   "version": "0.1.0",
   "type": "module",
   "description": "Dashboards automáticos a partir de qualquer planilha (Excel/CSV) — 100% local, sem IA paga.",
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "coverage": "vitest run --coverage"
+    "coverage": "vitest run --coverage",
+    "lint": "eslint .",
+    "format": "prettier --write \"src/**/*.{js,jsx,css}\""
   },
   "dependencies": {
     "html-to-image": "^1.11.13",
@@ -21,8 +26,14 @@
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@vitejs/plugin-react": "^6.0.2",
     "@vitest/coverage-v8": "^4.1.9",
+    "eslint": "^10.6.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.3",
+    "globals": "^17.7.0",
+    "prettier": "^3.9.4",
     "vite": "^8.1.0",
     "vitest": "^4.1.9"
   }

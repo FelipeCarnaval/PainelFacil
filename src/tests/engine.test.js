@@ -131,3 +131,50 @@ describe('viewSignature — estável (para cache)', () => {
     expect(viewSignature({ dims: { Conv: ['A'] } }, {})).not.toBe(viewSignature({ dims: { Conv: ['B'] } }, {}))
   })
 })
+
+describe('computeView — mini-tendência (sparkline) e variação dos KPIs', () => {
+  const { rows, dash, engine } = setup()
+
+  it('KPI de soma ganha sparkline por período que soma o total', () => {
+    const view = computeView(engine, dash, {}, {})
+    const kpi = view.kpis.find((k) => k.label.startsWith('Total · Valor Apresentado'))
+    expect(Array.isArray(kpi.spark)).toBe(true)
+    expect(kpi.spark.length).toBeGreaterThanOrEqual(2)
+    const somaSpark = kpi.spark.reduce((a, b) => a + b, 0)
+    expect(Math.round(somaSpark)).toBe(Math.round(kpi.value))
+  })
+
+  it('KPI de contagem: sparkline soma a quantidade de registros', () => {
+    const view = computeView(engine, dash, {}, {})
+    const kpi = view.kpis.find((k) => k.agg === 'count')
+    expect(kpi.spark.reduce((a, b) => a + b, 0)).toBe(rows.length)
+  })
+
+  it('variação (trend) reflete o último período vs. o anterior', () => {
+    const view = computeView(engine, dash, {}, {})
+    const kpi = view.kpis.find((k) => k.agg === 'sum' && k.spark)
+    const s = kpi.spark
+    const esperado = s[s.length - 2] !== 0 ? (s[s.length - 1] - s[s.length - 2]) / s[s.length - 2] : null
+    if (esperado === null) expect(kpi.trend).toBeNull()
+    else expect(kpi.trend).toBeCloseTo(esperado)
+  })
+
+  it('sem coluna de data, não há sparkline', () => {
+    const view = computeView(engine, { ...dash, dateCol: null }, {}, {})
+    expect(view.kpis.every((k) => k.spark == null)).toBe(true)
+  })
+})
+
+describe('computeView — dim nos gráficos (para drill-down)', () => {
+  const { dash, engine } = setup()
+
+  it('barras e rosca carregam a dimensão de origem', () => {
+    const view = computeView(engine, dash, {}, {})
+    const drilláveis = view.charts.filter((c) => ['bar', 'bars', 'pie'].includes(c.type))
+    expect(drilláveis.length).toBeGreaterThan(0)
+    for (const c of drilláveis) {
+      const w = dash.widgets.find((w) => w.type === c.type)
+      expect(c.dim).toBe(w.dim)
+    }
+  })
+})
