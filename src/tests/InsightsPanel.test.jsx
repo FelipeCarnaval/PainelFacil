@@ -36,4 +36,18 @@ describe('InsightsPanel', () => {
     expect(screen.getByText('Unimed')).toBeInTheDocument()
     expect(screen.getByText(/concentra/)).toBeInTheDocument()
   })
+
+  it('redige "quem mais cresceu" e "vs. média"', () => {
+    render(
+      <InsightsPanel
+        insights={[
+          { type: 'mover', dim: 'Convênio', measure: 'Valor', gran: 'month', key: 'Amil', delta: 0.34, prevKey: '2025-02', lastKey: '2025-03' },
+          { type: 'vsavg', measure: 'Valor', gran: 'month', delta: 0.42, lastKey: '2025-03', periods: 5 },
+        ]}
+      />,
+    )
+    expect(screen.getByText('Amil')).toBeInTheDocument()
+    expect(screen.getByText(/mais cresceu/)).toBeInTheDocument()
+    expect(screen.getByText(/42% acima/)).toBeInTheDocument()
+  })
 })

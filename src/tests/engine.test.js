@@ -238,3 +238,38 @@ describe('computeView — destaques automáticos (insights)', () => {
     expect(types).toContain('concentration')
   })
 })
+
+describe('computeView — insights de variação (mover e vsavg)', () => {
+  // Dataset determinístico: A estável (50/período), B dobra de 50 → 150 no último.
+  // Totais por período: 100, 100, 100, 200.
+  function miniSetup() {
+    const rows = []
+    for (const m of [1, 2, 3]) {
+      rows.push({ 'Competência': `15/0${m}/2025`, 'Categoria': 'A', 'Valor': 50 })
+      rows.push({ 'Competência': `15/0${m}/2025`, 'Categoria': 'B', 'Valor': 50 })
+    }
+    rows.push({ 'Competência': '15/04/2025', 'Categoria': 'A', 'Valor': 50 })
+    rows.push({ 'Competência': '15/04/2025', 'Categoria': 'B', 'Valor': 150 })
+    const cols = Object.keys(rows[0]).map((name, index) => ({ index, name }))
+    const profiles = profileColumns(cols, rows)
+    const dash = buildDashboard(profiles, rows)
+    const engine = buildEngine({ data: rows }, profiles)
+    return computeView(engine, dash, {}, {})
+  }
+
+  it('mover aponta a categoria que mais variou entre os dois últimos períodos', () => {
+    const view = miniSetup()
+    const m = view.insights.find((i) => i.type === 'mover')
+    expect(m).toBeTruthy()
+    expect(m.key).toBe('B')
+    expect(m.delta).toBeCloseTo(2) // 50 → 150 = +200%
+  })
+
+  it('vsavg compara o último período com a média dos anteriores', () => {
+    const view = miniSetup()
+    const v = view.insights.find((i) => i.type === 'vsavg')
+    expect(v).toBeTruthy()
+    expect(v.delta).toBeCloseTo(1) // 200 vs média 100 = +100%
+    expect(v.periods).toBe(3)
+  })
+})

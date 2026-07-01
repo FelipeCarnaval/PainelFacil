@@ -1,4 +1,4 @@
-import { Sparkles, TrendingUp, TrendingDown, Trophy, PieChart } from 'lucide-react'
+import { Sparkles, TrendingUp, TrendingDown, Trophy, PieChart, ArrowUpRight, ArrowDownRight, Gauge } from 'lucide-react'
 import { fmtCompact, periodLabel, GRAN_WORD } from '../lib/brFormat'
 
 const pct = (x, dec = 1) => `${(Math.abs(x) * 100).toFixed(dec).replace('.', ',')}%`
@@ -14,6 +14,33 @@ function renderInsight(ins) {
         <>
           <b>{ins.measure}</b> {up ? 'subiu' : 'caiu'} <b>{pct(ins.delta)}</b> no último{' '}
           {GRAN_WORD[ins.gran]} ({periodLabel(ins.prevKey, ins.gran)} →{' '}
+          {periodLabel(ins.lastKey, ins.gran)}).
+        </>
+      ),
+    }
+  }
+  if (ins.type === 'vsavg') {
+    const up = ins.delta >= 0
+    return {
+      Icon: Gauge,
+      tone: up ? 'up' : 'down',
+      text: (
+        <>
+          O último {GRAN_WORD[ins.gran]} ficou <b>{pct(ins.delta, 0)} {up ? 'acima' : 'abaixo'}</b>{' '}
+          da média dos {ins.periods} anteriores em {ins.measure}.
+        </>
+      ),
+    }
+  }
+  if (ins.type === 'mover') {
+    const up = ins.delta >= 0
+    return {
+      Icon: up ? ArrowUpRight : ArrowDownRight,
+      tone: up ? 'up' : 'down',
+      text: (
+        <>
+          <b>{ins.key}</b> foi quem mais {up ? 'cresceu' : 'caiu'} em {ins.measure}:{' '}
+          <b>{pct(ins.delta, 0)}</b> ({periodLabel(ins.prevKey, ins.gran)} →{' '}
           {periodLabel(ins.lastKey, ins.gran)}).
         </>
       ),

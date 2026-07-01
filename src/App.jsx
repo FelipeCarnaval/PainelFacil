@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { LayoutDashboard, Moon, Sun, Plus, AlertTriangle, Settings2, Gauge, Loader2, Printer } from 'lucide-react'
+import { LayoutDashboard, Moon, Sun, Plus, AlertTriangle, Settings2, Gauge, Loader2, Printer, ClipboardList, Check } from 'lucide-react'
 import * as engine from './services/analysisClient'
+import { buildSummary } from './lib/summary'
 import { useDataset } from './hooks/useDataset'
 import Dropzone from './components/Dropzone'
 import SheetPicker from './components/SheetPicker'
@@ -25,6 +26,7 @@ export default function App() {
   const [tableState, setTableState] = useState(defaultTableState())
   const [chartOpts, setChartOpts] = useState({ topN: 10, gran: 'auto' })
   const [view, setView] = useState(null)
+  const [copied, setCopied] = useState(false)
   const [viewBusy, setViewBusy] = useState(false)
   const [viewError, setViewError] = useState(null)
   const [perf, setPerf] = useState(null)
@@ -127,6 +129,23 @@ export default function App() {
     exportToExcel(rows, `${(fileName || 'painel').replace(/[^\w.-]+/g, '_')}.xlsx`)
   }
 
+  // Resumo executivo (KPIs + destaques + filtros) para a área de transferência.
+  async function copySummary() {
+    if (!view) return
+    const text = buildSummary({
+      fileName, count: view.count, total: meta.rowCount,
+      kpis: view.kpis, insights: view.insights,
+      dimFilters, dateFrom, dateTo,
+    })
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      alert('Não foi possível copiar automaticamente. Seu navegador pode estar bloqueando o acesso à área de transferência.')
+    }
+  }
+
   const showNewBtn = stage !== 'idle' && stage !== 'loading'
   const working = busy || viewBusy
 
@@ -205,9 +224,17 @@ export default function App() {
                   ))}
                 </div>
                 {meta.rowCount > 0 && (
-                  <button className="btn ghost sm" onClick={() => window.print()} title="Imprimir ou salvar o painel em PDF">
-                    <Printer size={15} /> PDF
-                  </button>
+                  <>
+                    <button
+                      className={`btn ghost sm ${copied ? 'active' : ''}`} onClick={copySummary} disabled={!view}
+                      title="Copiar resumo executivo (KPIs + destaques) para colar em e-mail ou mensagem"
+                    >
+                      {copied ? <Check size={15} /> : <ClipboardList size={15} />} {copied ? 'Copiado!' : 'Copiar resumo'}
+                    </button>
+                    <button className="btn ghost sm" onClick={() => window.print()} title="Imprimir ou salvar o painel em PDF">
+                      <Printer size={15} /> PDF
+                    </button>
+                  </>
                 )}
                 <button className={`btn ghost sm ${showPerf ? 'active' : ''}`} aria-expanded={showPerf} onClick={() => setShowPerf((v) => !v)}>
                   <Gauge size={15} /> Desempenho
