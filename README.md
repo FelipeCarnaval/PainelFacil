@@ -68,6 +68,8 @@ src/
 ```
 
 ## Recursos
+- **Destaques automáticos:** o painel escreve sozinho o que os dados dizem — tendência do último período, período de pico e concentração por categoria — recalculados a cada filtro, sem IA e sem custo.
+- **Cores seguras para daltonismo:** paleta categórica validada por script (Machado-2009, ΔE ≥ limiar em ambos os temas), com ordem fixa de tons e rótulos diretos como canal secundário.
 - **KPIs com tendência:** cada card mostra uma **mini-linha (sparkline)** por período e a **variação %** do último período vs. o anterior, com contagem animada.
 - **Gráficos grandes, um por linha:** linha em **área com gradiente**, barras horizontais e **rosca com legenda lateral** — que mostra todos os valores mesmo com muitas categorias. Cores acompanham o tema claro/escuro.
 - **Interação:** **tela cheia**, **download de cada gráfico em PNG/JPG** e **drill-down** (clique numa barra/fatia/legenda para filtrar o painel inteiro).

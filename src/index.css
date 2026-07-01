@@ -396,6 +396,32 @@ svg { flex: none; }
 .kpi-label { font-size: 12px; color: var(--text-dim); margin-top: 5px; }
 .spark { display: block; width: 100%; margin-top: 12px; opacity: 0.92; }
 
+/* ---------- Destaques (insights automáticos) ---------- */
+.insights-title {
+  display: flex; align-items: center; gap: 7px;
+  margin: 0 0 10px; font-size: 13px; font-weight: 700; color: var(--text-dim);
+  text-transform: uppercase; letter-spacing: 0.05em;
+}
+.insights-title svg { color: var(--accent); }
+.insights-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.insight {
+  display: flex; align-items: flex-start; gap: 10px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 13px 15px; box-shadow: var(--shadow); font-size: 13.5px; line-height: 1.5;
+  animation: pf-rise .5s var(--ease) both; animation-delay: calc(var(--i, 0) * 70ms);
+}
+.insight p { margin: 0; color: var(--text); }
+.insight b { font-weight: 700; }
+.insight-ic {
+  flex: none; display: inline-flex; align-items: center; justify-content: center;
+  width: 30px; height: 30px; border-radius: 9px; margin-top: 1px;
+}
+.insight-up .insight-ic { color: var(--tone-emerald); background: var(--tone-emerald-soft); }
+.insight-down .insight-ic { color: #dc2626; background: rgba(220, 38, 38, 0.12); }
+[data-theme='dark'] .insight-down .insight-ic { color: #f87171; background: rgba(248, 113, 113, 0.15); }
+.insight-gold .insight-ic { color: var(--tone-amber); background: var(--tone-amber-soft); }
+.insight-info .insight-ic { color: var(--tone-blue); background: var(--tone-blue-soft); }
+
 /* ---------- Cards & charts ---------- */
 .card {
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);

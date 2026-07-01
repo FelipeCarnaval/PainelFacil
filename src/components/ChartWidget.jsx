@@ -7,14 +7,17 @@ import { LineChart as LineIcon, BarChart3, PieChart as PieIcon, Maximize2, X, Do
 import { fmtCompact, fmtNum, GRAN_WORD } from '../lib/brFormat'
 import ChartTooltip from './ChartTooltip'
 
-// Paletas vibrantes porém sóbrias, uma por tema (azul de marca primeiro).
+// Paletas categóricas VALIDADAS (colorblind-safe): 8 tons em ORDEM FIXA — a ordem
+// é o mecanismo de segurança para daltonismo e nunca muda nem cicla. Validação
+// (script Machado-2009): claro vs #ffffff → pior par adjacente ΔE 24,2; escuro vs
+// #161d2e → ΔE 10,3 (faixa-piso, legal porque há rótulos diretos + legenda com valores).
 const PALETTE_LIGHT = [
-  '#2563eb', '#059669', '#ea580c', '#7c3aed', '#0891b2',
-  '#d97706', '#0d9488', '#db2777', '#4f46e5', '#0ea5e9',
+  '#2a78d6', '#1baf7a', '#eda100', '#008300',
+  '#4a3aa7', '#e34948', '#e87ba4', '#eb6834',
 ]
 const PALETTE_DARK = [
-  '#60a5fa', '#34d399', '#fb923c', '#a78bfa', '#22d3ee',
-  '#fbbf24', '#2dd4bf', '#f472b6', '#818cf8', '#38bdf8',
+  '#3987e5', '#199e70', '#c98500', '#008300',
+  '#9085e9', '#e66767', '#d55181', '#d95926',
 ]
 
 const tooltip = <ChartTooltip />
@@ -91,14 +94,15 @@ function lineBody(data, lines, narrow, theme, height) {
         <CartesianGrid vertical={false} stroke={theme.grid} />
         <XAxis dataKey="name" tick={tick} tickLine={false} axisLine={false} />
         <YAxis tickFormatter={fmtCompact} tick={tick} tickLine={false} axisLine={false} width={56} />
-        <Tooltip content={tooltip} cursor={{ stroke: theme.borderStrong, strokeDasharray: '4 4' }} />
+        <Tooltip content={tooltip} cursor={{ stroke: theme.borderStrong }} />
         {legend}
         {lines.map(({ key, name }, i) => {
           const c = theme.palette[i % theme.palette.length]
           return (
-            <Line key={key} type="monotone" dataKey={key} name={name} stroke={c} strokeWidth={2.6}
+            <Line key={key} type="monotone" dataKey={key} name={name} stroke={c} strokeWidth={2}
               dot={{ r: 2.4, strokeWidth: 0, fill: c }} activeDot={{ r: 5 }} {...ANIM}>
-              <LabelList dataKey={key} content={lastValueLabel(data.length, c, narrow ? 10 : 12)} />
+              {/* Rótulo só no último ponto, em tinta de texto (identidade fica na posição da linha). */}
+              <LabelList dataKey={key} content={lastValueLabel(data.length, theme.label, narrow ? 10 : 12)} />
             </Line>
           )
         })}
@@ -122,17 +126,20 @@ function areaBody(data, name, narrow, theme, height) {
         <CartesianGrid vertical={false} stroke={theme.grid} />
         <XAxis dataKey="name" tick={tick} tickLine={false} axisLine={false} />
         <YAxis tickFormatter={fmtCompact} tick={tick} tickLine={false} axisLine={false} width={56} />
-        <Tooltip content={tooltip} cursor={{ stroke: theme.borderStrong, strokeDasharray: '4 4' }} />
-        <Area type="monotone" dataKey="value" name={name} stroke={c} strokeWidth={2.8}
+        <Tooltip content={tooltip} cursor={{ stroke: theme.borderStrong }} />
+        <Area type="monotone" dataKey="value" name={name} stroke={c} strokeWidth={2}
           fill="url(#pf-area)" dot={{ r: 2.4, strokeWidth: 0, fill: c }} activeDot={{ r: 5 }} {...ANIM}>
-          <LabelList dataKey="value" content={lastValueLabel(data.length, c, narrow ? 10 : 12)} />
+          <LabelList dataKey="value" content={lastValueLabel(data.length, theme.label, narrow ? 10 : 12)} />
         </Area>
       </AreaChart>
     </ResponsiveContainer>
   )
 }
 
-function barBody(data, bars, perColor, narrow, theme, height, onDrill) {
+// Ranking de série única: TODAS as barras na cor do slot 1 — o comprimento já
+// codifica o valor; uma cor por barra re-codificaria a identidade à toa e
+// quebraria a segurança para daltonismo ao ciclar tons além dos 8 slots.
+function barBody(data, bars, narrow, theme, height, onDrill) {
   const single = bars.length === 1
   const tick = { fontSize: 12, fill: theme.tick }
   const pal = theme.palette
@@ -147,9 +154,8 @@ function barBody(data, bars, perColor, narrow, theme, height, onDrill) {
         <Tooltip content={tooltip} cursor={{ fill: theme.cursorFill }} />
         {!single && legend}
         {bars.map(({ key, name }, i) => (
-          <Bar key={key} dataKey={key} name={name} fill={perColor ? undefined : `url(#pf-bar-${i % pal.length})`}
+          <Bar key={key} dataKey={key} name={name} fill={`url(#pf-bar-${i % pal.length})`}
             radius={[0, single ? 6 : 5, single ? 6 : 5, 0]} maxBarSize={single ? 34 : 20} onClick={click} {...ANIM}>
-            {perColor && data.map((_, j) => <Cell key={j} fill={`url(#pf-bar-${j % pal.length})`} />)}
             <LabelList dataKey={key} position="right" formatter={fmtCompact} fill={theme.label}
               fontSize={single ? (narrow ? 11 : 12) : (narrow ? 9 : 11)} />
           </Bar>
@@ -351,9 +357,9 @@ export default function ChartWidget({ chart, onDrill }) {
       case 'lines':
         return lineBody(chart.data, chart.measures.map((m) => ({ key: m, name: m })), narrow, theme, h)
       case 'bar':
-        return barBody(chart.data, [{ key: 'value', name: chart.measure }], true, narrow, theme, h, drill)
+        return barBody(chart.data, [{ key: 'value', name: chart.measure }], narrow, theme, h, drill)
       case 'bars':
-        return barBody(chart.data, chart.measures.map((m) => ({ key: m, name: m })), false, narrow, theme, h, drill)
+        return barBody(chart.data, chart.measures.map((m) => ({ key: m, name: m })), narrow, theme, h, drill)
       case 'pie':
         return pieBody(chart.data, theme, h, drill)
       default:

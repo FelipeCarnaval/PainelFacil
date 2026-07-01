@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react'
 import KpiCard from './KpiCard'
+import InsightsPanel from './InsightsPanel'
 import PivotMatrix from './PivotMatrix'
 import DataTable from './DataTable'
 
@@ -19,6 +20,8 @@ export default function Dashboard({ view, profiles, tableState, setTableState, o
           {view.kpis.map((k, i) => <KpiCard key={i} index={i} {...k} />)}
         </div>
       )}
+
+      <InsightsPanel insights={view.insights} />
 
       {charts.length > 0 && (
         <div className="chart-grid">

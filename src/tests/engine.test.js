@@ -194,4 +194,47 @@ describe('computeView — Top N e granularidade forçados', () => {
   it('a assinatura de cache muda com as opções dos gráficos', () => {
     expect(viewSignature({}, {}, { topN: 5 })).not.toBe(viewSignature({}, {}, { topN: 10 }))
   })
+
+  it('rosca nunca passa de 7 classes de cor (6 fatias + Outros)', () => {
+    const view = computeView(engine, dash, {}, {}, { topN: 25 })
+    const pie = view.charts.find((c) => c.type === 'pie')
+    if (pie) expect(pie.data.length).toBeLessThanOrEqual(7)
+  })
+})
+
+describe('computeView — destaques automáticos (insights)', () => {
+  const { rows, dash, engine } = setup()
+
+  it('gera tendência, pico e concentração', () => {
+    const view = computeView(engine, dash, {}, {})
+    const types = view.insights.map((i) => i.type)
+    expect(types).toContain('trend')
+    expect(types).toContain('peak')
+    expect(types).toContain('concentration')
+  })
+
+  it('concentração bate com o cálculo direto', () => {
+    const view = computeView(engine, dash, {}, {})
+    const c = view.insights.find((i) => i.type === 'concentration')
+    const groups = groupAgg(rows, c.dim, c.measure)
+    const total = groups.reduce((a, g) => a + g.value, 0)
+    expect(c.topKey).toBe(groups[0].key)
+    expect(c.share).toBeCloseTo(groups[0].value / total)
+    expect(c.groupCount).toBe(groups.length)
+  })
+
+  it('tendência coincide com a variação da sparkline do KPI principal', () => {
+    const view = computeView(engine, dash, {}, {})
+    const t = view.insights.find((i) => i.type === 'trend')
+    const kpi = view.kpis.find((k) => k.agg === 'sum' && k.measure === t.measure)
+    expect(t.delta).toBeCloseTo(kpi.trend)
+  })
+
+  it('sem coluna de data, só gera concentração', () => {
+    const view = computeView(engine, { ...dash, dateCol: null }, {}, {})
+    const types = view.insights.map((i) => i.type)
+    expect(types).not.toContain('trend')
+    expect(types).not.toContain('peak')
+    expect(types).toContain('concentration')
+  })
 })
