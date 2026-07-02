@@ -96,6 +96,12 @@ export function buildDashboard(profiles, data, opts = {}) {
   if (pieDim && primary) {
     widgets.push({ type: 'pie', title: `${primary} por ${pieDim.name}`, dim: pieDim.name, measure: primary })
   }
+  // Ranking detalhado: a dimensão de MAIOR cardinalidade (procedimento, médico,
+  // cliente…), onde o controle "Top N" realmente importa. A rosca resume; este lista.
+  const bigDim = dims[dims.length - 1]
+  if (bigDim && primary && bigDim.stats.distinct >= 8 && bigDim.name !== dims[0].name) {
+    widgets.push({ type: 'bar', title: `Top ${bigDim.name} · ${primary}`, dim: bigDim.name, measure: primary })
+  }
   // Matriz
   if (dims[0] && dims[1] && primary) {
     widgets.push({

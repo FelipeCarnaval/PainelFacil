@@ -13,6 +13,7 @@ export default function ChartControls({ opts, setOpts, showTopN, hasDate }) {
             aria-label="Quantidade de itens no ranking (Top N)"
           >
             {[5, 10, 15, 25].map((n) => <option key={n} value={n}>{n}</option>)}
+            <option value={999}>Todos</option>
           </select>
         </label>
       )}

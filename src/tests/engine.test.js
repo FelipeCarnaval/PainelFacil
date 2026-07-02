@@ -273,3 +273,36 @@ describe('computeView — insights de variação (mover e vsavg)', () => {
     expect(v.periods).toBe(3)
   })
 })
+
+describe('buildDashboard — ranking para dimensão de alta cardinalidade', () => {
+  it('cria um ranking extra quando há dimensão com ≥ 8 categorias', () => {
+    const procs = Array.from({ length: 10 }, (_, i) => `Proc ${String.fromCharCode(65 + i)}`)
+    const rows = []
+    for (let i = 0; i < 120; i++) {
+      rows.push({
+        'Competência': `15/0${(i % 6) + 1}/2025`,
+        'Unidade': ['Matriz', 'Norte', 'Sul'][i % 3],
+        'Procedimento': procs[i % 10],
+        'Valor': 100 + i,
+      })
+    }
+    const cols = Object.keys(rows[0]).map((name, index) => ({ index, name }))
+    const profiles = profileColumns(cols, rows)
+    const dash = buildDashboard(profiles, rows)
+    const rankings = dash.widgets.filter((w) => w.type === 'bar')
+    expect(rankings.some((w) => w.dim === 'Procedimento')).toBe(true)
+  })
+
+  it('não duplica o ranking quando todas as dimensões são pequenas', () => {
+    const { dash } = (() => {
+      const rows = []
+      for (let i = 0; i < 60; i++) {
+        rows.push({ 'Unidade': ['A', 'B', 'C'][i % 3], 'Setor': ['X', 'Y'][i % 2], 'Valor': 10 + i })
+      }
+      const cols = Object.keys(rows[0]).map((name, index) => ({ index, name }))
+      const profiles = profileColumns(cols, rows)
+      return { dash: buildDashboard(profiles, rows) }
+    })()
+    expect(dash.widgets.filter((w) => w.type === 'bar').length).toBeLessThanOrEqual(1)
+  })
+})

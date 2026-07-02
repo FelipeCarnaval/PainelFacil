@@ -284,7 +284,12 @@ export default function App() {
                   />
                   <ChartControls
                     opts={chartOpts} setOpts={setChartOpts}
-                    showTopN={meta.dash.widgets.some((w) => ['bar', 'bars', 'pie'].includes(w.type))}
+                    // "Mostrar top" só quando existe ranking E alguma dimensão com
+                    // itens suficientes para o corte fazer diferença na tela.
+                    showTopN={
+                      meta.dash.widgets.some((w) => ['bar', 'bars', 'pie'].includes(w.type)) &&
+                      meta.dash.dims.some((d) => (meta.dimOptions[d]?.length || 0) > 6)
+                    }
                     hasDate={!!meta.dash.dateCol}
                   />
                 </div>
