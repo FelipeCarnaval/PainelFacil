@@ -1,16 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
 import { DollarSign, FileSpreadsheet, Activity, Percent, Sigma, TrendingUp, TrendingDown, Minus } from 'lucide-react'
-import { fmtInt, fmtCompact, fmtNum } from '../lib/brFormat'
+import { fmtInt, fmtCompact, fmtNum, MONEY_RX } from '../lib/brFormat'
 import Sparkline from './Sparkline'
 
-const MONEY_RX = /valor|vlr|r\$|receita|custo|despesa|glosa|pago|faturad|apresentad|repasse|montante|saldo/i
-
-// Ícone + tom de cor por natureza da métrica (dinheiro=verde, % =âmbar, média=azul-céu…).
+// Ícone + gradiente corporativo por natureza da métrica: dinheiro=azul-marinho,
+// taxas/%=dourado, médias=petróleo, contagem=grafite.
 function metaFor({ agg, measure = '', percent }) {
-  if (agg === 'count') return { Icon: FileSpreadsheet, tone: 'slate' } // "Registros" = linhas da planilha
-  if (percent) return { Icon: Percent, tone: 'amber' }
-  if (agg === 'avg') return { Icon: Activity, tone: 'sky' }
-  return MONEY_RX.test(measure) ? { Icon: DollarSign, tone: 'emerald' } : { Icon: Sigma, tone: 'blue' }
+  if (agg === 'count') return { Icon: FileSpreadsheet, grad: 'slate' } // "Registros" = linhas da planilha
+  if (percent) return { Icon: Percent, grad: 'gold' }
+  if (agg === 'avg') return { Icon: Activity, grad: 'teal' }
+  return MONEY_RX.test(measure) ? { Icon: DollarSign, grad: 'blue' } : { Icon: Sigma, grad: 'teal' }
 }
 
 const reducedMotion = () =>
@@ -64,7 +63,7 @@ function TrendBadge({ trend }) {
 }
 
 export default function KpiCard({ label, value, kind, agg, measure, percent, spark, trend, index = 0 }) {
-  const { Icon, tone } = metaFor({ agg, measure, percent })
+  const { Icon, grad } = metaFor({ agg, measure, percent })
   const shown = useCountUp(value)
   const isMoney = agg !== 'count' && !percent && MONEY_RX.test(measure || '')
   const num =
@@ -76,16 +75,16 @@ export default function KpiCard({ label, value, kind, agg, measure, percent, spa
       className="kpi"
       style={{
         '--i': index,
-        '--kpi-accent': `var(--tone-${tone})`,
-        '--kpi-soft': `var(--tone-${tone}-soft)`,
+        '--card-grad': `var(--grad-${grad})`,
+        '--kpi-accent': `var(--c-${grad}-2)`,
       }}
     >
       <div className="kpi-top">
         <span className="kpi-ic"><Icon size={18} strokeWidth={2.2} /></span>
         <TrendBadge trend={trend} />
       </div>
-      <div className="kpi-value">{display}</div>
       <div className="kpi-label">{label}</div>
+      <div className="kpi-value">{display}</div>
       {spark && spark.length > 1 && <Sparkline data={spark} color="var(--kpi-accent)" />}
     </div>
   )

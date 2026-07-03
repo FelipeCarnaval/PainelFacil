@@ -168,9 +168,9 @@ describe('computeView — mini-tendência (sparkline) e variação dos KPIs', ()
 describe('computeView — dim nos gráficos (para drill-down)', () => {
   const { dash, engine } = setup()
 
-  it('barras e rosca carregam a dimensão de origem', () => {
+  it('barras e participação carregam a dimensão de origem', () => {
     const view = computeView(engine, dash, {}, {})
-    const drilláveis = view.charts.filter((c) => ['bar', 'bars', 'pie'].includes(c.type))
+    const drilláveis = view.charts.filter((c) => ['bar', 'bars', 'dist'].includes(c.type))
     expect(drilláveis.length).toBeGreaterThan(0)
     for (const c of drilláveis) {
       const w = dash.widgets.find((w) => w.type === c.type)
@@ -186,7 +186,7 @@ describe('computeView — Top N e granularidade forçados', () => {
     const view = computeView(engine, dash, {}, {}, { topN: 2, gran: 'year' })
     for (const c of view.charts) {
       if (c.type === 'bar' || c.type === 'bars') expect(c.data.length).toBeLessThanOrEqual(2)
-      if (c.type === 'pie') expect(c.data.length).toBeLessThanOrEqual(3) // top 2 + "Outros"
+      if (c.type === 'dist') expect(c.data.length).toBeLessThanOrEqual(3) // top 2 + "Outros"
       if (c.type === 'line' || c.type === 'lines') expect(c.gran).toBe('year')
     }
   })
@@ -195,10 +195,10 @@ describe('computeView — Top N e granularidade forçados', () => {
     expect(viewSignature({}, {}, { topN: 5 })).not.toBe(viewSignature({}, {}, { topN: 10 }))
   })
 
-  it('rosca nunca passa de 7 classes de cor (6 fatias + Outros)', () => {
+  it('participação nunca passa de 13 linhas (12 + Outros)', () => {
     const view = computeView(engine, dash, {}, {}, { topN: 25 })
-    const pie = view.charts.find((c) => c.type === 'pie')
-    if (pie) expect(pie.data.length).toBeLessThanOrEqual(7)
+    const dist = view.charts.find((c) => c.type === 'dist')
+    if (dist) expect(dist.data.length).toBeLessThanOrEqual(13)
   })
 })
 

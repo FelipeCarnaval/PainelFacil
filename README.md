@@ -22,7 +22,7 @@ Suba um **Excel** ou **CSV** (relatórios do **Benner Saúde**, **Benner Corpora
 | Coluna numérica | **Cards** (total, média, contagem) |
 | Data + número | **Gráfico de linha** (evolução por mês) |
 | Categoria + número | **Barras** (ranking) |
-| Categoria + número | **Rosca** (distribuição %) |
+| Categoria + número | **Participação no total** (barras de proporção com %) |
 | 2 categorias + número | **Matriz/pivot** com heatmap |
 | Tudo | **Tabela** com busca, ordenação, paginação e export Excel |
 
@@ -71,8 +71,8 @@ src/
 - **Destaques automáticos:** o painel escreve sozinho o que os dados dizem — tendência do último período, período de pico e concentração por categoria — recalculados a cada filtro, sem IA e sem custo.
 - **Cores seguras para daltonismo:** paleta categórica validada por script (Machado-2009, ΔE ≥ limiar em ambos os temas), com ordem fixa de tons e rótulos diretos como canal secundário.
 - **KPIs com tendência:** cada card mostra uma **mini-linha (sparkline)** por período e a **variação %** do último período vs. o anterior, com contagem animada.
-- **Gráficos grandes, um por linha:** linha em **área com gradiente**, barras horizontais e **rosca com legenda lateral** — que mostra todos os valores mesmo com muitas categorias. Cores acompanham o tema claro/escuro.
-- **Interação:** **tela cheia**, **download de cada gráfico em PNG/JPG** e **drill-down** (clique numa barra/fatia/legenda para filtrar o painel inteiro).
+- **Gráficos grandes, um por linha:** linha em **área com gradiente**, barras horizontais e **participação no total** (barras de proporção com valor e % rotulados — mais legível que pizza, em qualquer quantidade de categorias). Cores acompanham o tema claro/escuro.
+- **Interação:** **tela cheia**, **download de cada gráfico em PNG/JPG** e **drill-down** (clique numa barra ou numa linha de participação para filtrar o painel inteiro).
 - **Filtros ativos:** chips removíveis mostram e limpam o que está filtrado no momento.
 - **Cabeçalho de múltiplas linhas:** quando o relatório tem um nível de **grupo** sobre as colunas
   (ex.: `2024`/`2025` mesclados sobre `Apresentado`/`Glosa`), os níveis são combinados em

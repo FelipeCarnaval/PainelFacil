@@ -1,34 +1,53 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   ResponsiveContainer, BarChart, Bar, LineChart, Line, AreaChart, Area,
-  PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, LabelList, Label,
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend, LabelList,
   ReferenceLine, ReferenceDot,
 } from 'recharts'
-import { LineChart as LineIcon, BarChart3, PieChart as PieIcon, Maximize2, X, Download, Loader2 } from 'lucide-react'
-import { fmtCompact, fmtNum, GRAN_WORD } from '../lib/brFormat'
+import { LineChart as LineIcon, BarChart3, ListOrdered, PieChart as ShareIcon, Maximize2, X, Download, Loader2 } from 'lucide-react'
+import { fmtCompact, fmtNum, fmtMoney, fmtMoneyCompact, isMoneyName, GRAN_WORD } from '../lib/brFormat'
 import ChartTooltip from './ChartTooltip'
+import HelpHint from './HelpHint'
 
-// Paletas categóricas VALIDADAS (colorblind-safe): 8 tons em ORDEM FIXA — a ordem
-// é o mecanismo de segurança para daltonismo e nunca muda nem cicla. Validação
-// (script Machado-2009): claro vs #ffffff → pior par adjacente ΔE 24,2; escuro vs
-// #161d2e → ΔE 10,3 (faixa-piso, legal porque há rótulos diretos + legenda com valores).
+// Paletas categóricas CORPORATIVAS e VALIDADAS (colorblind-safe): 8 tons sóbrios
+// (azul-marinho, dourado, petróleo, vinho…) em ORDEM FIXA — a ordem é o mecanismo
+// de segurança para daltonismo e nunca muda nem cicla. Validação (script
+// Machado-2009): claro vs #ffffff → TODOS os checks passam (pior par adjacente
+// ΔE 31,5 protan); escuro vs #16182a → TODOS passam (pior par ΔE 17,5 deutan).
+// Séries ÚNICAS (sem identidade por cor) usam o azul da marca — ver brand1/2.
 const PALETTE_LIGHT = [
-  '#2a78d6', '#1baf7a', '#eda100', '#008300',
-  '#4a3aa7', '#e34948', '#e87ba4', '#eb6834',
+  '#1d4ed8', '#a16207', '#0d9488', '#9f1239',
+  '#0369a1', '#15803d', '#6d28d9', '#c2410c',
 ]
 const PALETTE_DARK = [
-  '#3987e5', '#199e70', '#c98500', '#008300',
-  '#9085e9', '#e66767', '#d55181', '#d95926',
+  '#5b8def', '#bd8b16', '#1fa898', '#e0567e',
+  '#3395cf', '#3fae62', '#9a70f0', '#e0703d',
 ]
 
-const tooltip = <ChartTooltip />
-// Legenda no topo à direita: não disputa espaço com o eixo X e dá cara de BI.
-const legendTop = (
-  <Legend iconType="circle" verticalAlign="top" align="right" wrapperStyle={{ fontSize: 12, paddingBottom: 10 }} />
+// Legenda embaixo, centralizada (padrão dos dashboards da empresa).
+// Clicável: liga/desliga cada série (a escondida fica riscada/apagada).
+const legendBottom = (hidden, onToggle) => (
+  <Legend
+    iconType="circle" iconSize={11} verticalAlign="bottom" align="center"
+    wrapperStyle={{ fontSize: 12, paddingTop: 10, cursor: 'pointer', userSelect: 'none' }}
+    onClick={(e) => onToggle(e?.value)}
+    formatter={(value) => (
+      <span style={{ textDecoration: hidden.has(value) ? 'line-through' : 'none', opacity: hidden.has(value) ? 0.5 : 1 }}>
+        {value}
+      </span>
+    )}
+  />
 )
 const ANIM = { isAnimationActive: true, animationDuration: 750, animationEasing: 'ease-out', animationBegin: 0 }
-const HeaderIcon = { line: LineIcon, lines: LineIcon, bar: BarChart3, bars: BarChart3, pie: PieIcon }
-const DRILLABLE = new Set(['bar', 'bars', 'pie'])
+// Ícone + gradiente do cabeçalho por papel do gráfico (evolução, ranking, participação…).
+const HEADER = {
+  line: { Icon: LineIcon, grad: 'blue' },
+  lines: { Icon: LineIcon, grad: 'blue' },
+  bar: { Icon: ListOrdered, grad: 'teal' },
+  bars: { Icon: BarChart3, grad: 'slate' },
+  dist: { Icon: ShareIcon, grad: 'gold' },
+}
+const DRILLABLE = new Set(['bar', 'bars', 'dist'])
 const trunc = (s, n) => (String(s).length > n ? String(s).slice(0, n - 1) + '…' : String(s))
 
 function readVar(name, fallback) {
@@ -41,10 +60,15 @@ function buildTheme() {
   return {
     dark,
     palette: dark ? PALETTE_DARK : PALETTE_LIGHT,
-    grid: readVar('--border', dark ? '#283146' : '#eef2f7'),
+    // Azul corporativo da marca para marcas de série única —
+    // contraste vs superfície ≥ 3,8:1 nos dois temas.
+    brand1: readVar('--c-blue-1', dark ? '#3b82f6' : '#1e3a8a'),
+    brand2: readVar('--c-blue-2', dark ? '#60a5fa' : '#2563eb'),
+    grid: readVar('--grid-line', dark ? '#283146' : '#eef2f7'),
+    axis: dark ? 'rgba(255,255,255,0.14)' : '#e2e8f0',
     tick: readVar('--text-dim', '#64748b'),
     label: readVar('--text', '#334155'),
-    surface: readVar('--surface', dark ? '#161d2e' : '#ffffff'),
+    surface: readVar('--surface-solid', dark ? '#16182a' : '#ffffff'),
     borderStrong: readVar('--border-strong', '#cbd5e1'),
     cursorFill: dark ? 'rgba(96,165,250,0.10)' : 'rgba(37,99,235,0.06)',
     track: dark ? 'rgba(255,255,255,0.045)' : 'rgba(15,23,42,0.05)',
@@ -60,88 +84,209 @@ function useChartTheme() {
   return theme
 }
 
+// Gradientes verticais (topo cheio → base translúcida) para as colunas.
 function BarGradients({ palette }) {
   return (
     <defs>
       {palette.map((c, i) => (
-        <linearGradient key={i} id={`pf-bar-${i}`} x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stopColor={c} stopOpacity={0.55} />
-          <stop offset="100%" stopColor={c} stopOpacity={1} />
+        <linearGradient key={i} id={`pf-bar-${i}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={c} stopOpacity={1} />
+          <stop offset="100%" stopColor={c} stopOpacity={0.55} />
         </linearGradient>
       ))}
     </defs>
   )
 }
 
-const lastValueLabel = (count, fill, fontSize) =>
+// Gradiente da marca (roxo → violeta) para colunas de série única.
+function BrandBarGradient({ theme }) {
+  return (
+    <defs>
+      <linearGradient id="pf-brand-bar" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stopColor={theme.brand2} stopOpacity={1} />
+        <stop offset="100%" stopColor={theme.brand1} stopOpacity={0.6} />
+      </linearGradient>
+    </defs>
+  )
+}
+
+// Rótulo de valor em "pill" escura no topo da coluna — assinatura visual dos
+// dashboards da empresa (texto branco sobre rgba(0,0,0,.5), cantos arredondados).
+// `stagger` alterna a altura das pills (par/ímpar) para não colidirem em
+// gráficos com muitas colunas.
+const pillLabel = (fmt, fontSize = 10, stagger = false) =>
+  function Pill({ x, y, width, value, index }) {
+    if (value == null || !(value > 0)) return null
+    const text = fmt(value)
+    const w = Math.round(text.length * fontSize * 0.62) + 10
+    const cx = x + width / 2
+    const lift = stagger && index % 2 === 1 ? 17 : 0
+    return (
+      <g pointerEvents="none">
+        <rect x={cx - w / 2} y={y - 20 - lift} rx={4} width={w} height={16} fill="rgba(15, 23, 42, 0.55)" />
+        <text x={cx} y={y - 8.5 - lift} textAnchor="middle" fill="#ffffff" fontSize={fontSize} fontWeight={600}>
+          {text}
+        </text>
+      </g>
+    )
+  }
+
+// Rotaciona os rótulos do eixo X quando os nomes são longos ou há muitas colunas.
+const xAxisCat = (data, theme, narrow) => {
+  const longest = data.reduce((a, d) => Math.max(a, String(d.name || '').length), 0)
+  const rotate = data.length > 6 || longest > 9 || narrow
+  return {
+    dataKey: 'name',
+    interval: 0,
+    tick: { fontSize: data.length > 14 ? 10 : 11, fill: theme.tick },
+    tickFormatter: (v) => trunc(v, narrow ? 10 : 14),
+    tickLine: false,
+    axisLine: { stroke: theme.axis, strokeWidth: 2 },
+    ...(rotate ? { angle: -30, textAnchor: 'end', height: 64 } : { tickMargin: 8 }),
+  }
+}
+
+const lastValueLabel = (count, fill, fontSize, fmt = fmtCompact, dy = 0) =>
   function LastValue({ x, y, value, index }) {
     if (index !== count - 1 || value == null) return null
     return (
-      <text x={x + 10} y={y} dy={4} fill={fill} fontSize={fontSize} fontWeight={700} textAnchor="start">
-        {fmtCompact(value)}
+      <text x={x + 10} y={y + dy} dy={4} fill={fill} fontSize={fontSize} fontWeight={700} textAnchor="start">
+        {fmt(value)}
       </text>
     )
   }
 
-// --- Evolução (série única): área com gradiente, linha de média e ponto final. ---
+// Deslocamento vertical dos rótulos de ponta para não colidirem quando as
+// séries terminam próximas: ordena pela posição estimada e garante 14px entre eles.
+function endLabelOffsets(data, lines, hidden, height) {
+  const offsets = {}
+  if (!data.length) return offsets
+  const last = data[data.length - 1]
+  let globalMax = 0
+  for (const d of data) for (const { key } of lines) globalMax = Math.max(globalMax, d[key] || 0)
+  const plotH = Math.max(height - 70, 100)
+  const entries = lines
+    .filter(({ name }) => !hidden.has(name))
+    .map(({ key }) => ({ key, y: (1 - (last[key] || 0) / (globalMax || 1)) * plotH }))
+    .sort((a, b) => a.y - b.y)
+  let prev = -Infinity
+  for (const e of entries) {
+    const y = Math.max(e.y, prev + 14)
+    offsets[e.key] = y - e.y
+    prev = y
+  }
+  return offsets
+}
 
-function areaBody(data, name, narrow, theme, height) {
+// --- Evolução (série única): área com gradiente, média, pico e ponto final. ---
+
+function areaBody(data, name, narrow, theme, height, money) {
   const tick = { fontSize: 11.5, fill: theme.tick }
-  const c = theme.palette[0]
+  const c = theme.brand1
+  const fmt = money ? fmtMoneyCompact : fmtCompact
   const avg = data.reduce((a, d) => a + (d.value || 0), 0) / (data.length || 1)
   const last = data[data.length - 1]
+  // Poucos pontos: valor visível em cima de cada um (padrão dos dashboards da
+  // empresa). Muitos pontos: só média, pico e último valor (o tooltip detalha).
+  const showPointLabels = data.length <= 16 && !narrow
+  // Pico destacado (quando não é o último ponto, que já tem rótulo próprio).
+  let peak = null
+  if (data.length >= 4 && !showPointLabels) {
+    peak = data.reduce((p, d) => (d.value > p.value ? d : p), data[0])
+    if (peak === last || !(peak.value > 0)) peak = null
+  }
+  // Variação vs. ponto anterior, para o tooltip.
+  const prevOf = (label) => {
+    const i = data.findIndex((d) => d.name === label)
+    return i > 0 ? data[i - 1].value : null
+  }
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <AreaChart data={data} margin={{ top: 14, right: 56, left: 4, bottom: 4 }}>
+      <AreaChart data={data} margin={{ top: 24, right: showPointLabels ? 24 : money ? 88 : 68, left: 4, bottom: 4 }}>
         <defs>
           <linearGradient id="pf-area" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor={c} stopOpacity={0.38} />
-            <stop offset="94%" stopColor={c} stopOpacity={0.02} />
+            <stop offset="94%" stopColor={theme.brand2} stopOpacity={0.02} />
           </linearGradient>
         </defs>
         <CartesianGrid vertical={false} stroke={theme.grid} />
-        <XAxis dataKey="name" tick={tick} tickLine={false} axisLine={false} minTickGap={28} tickMargin={8} />
-        <YAxis tickFormatter={fmtCompact} tick={tick} tickLine={false} axisLine={false} width={52} />
-        <Tooltip content={tooltip} cursor={{ stroke: theme.borderStrong }} />
+        <XAxis
+          dataKey="name" tick={tick} tickLine={false} axisLine={{ stroke: theme.axis, strokeWidth: 2 }}
+          minTickGap={28} tickMargin={8}
+          padding={showPointLabels ? { left: 28, right: 28 } : undefined}
+        />
+        <YAxis tickFormatter={fmt} tick={tick} tickLine={false} axisLine={{ stroke: theme.axis, strokeWidth: 2 }} width={money ? 74 : 52} />
+        <Tooltip content={<ChartTooltip money={money} prevOf={prevOf} />} cursor={{ stroke: theme.brand1, strokeWidth: 1, strokeDasharray: '4 4' }} />
         {data.length >= 3 && (
           <ReferenceLine
             y={avg} stroke={theme.borderStrong} strokeDasharray="4 4"
-            label={{ value: `média ${fmtCompact(avg)}`, position: 'insideBottomLeft', fill: theme.tick, fontSize: 10.5 }}
+            label={{ value: `média ${fmt(avg)}`, position: 'insideBottomLeft', fill: theme.tick, fontSize: 10.5 }}
           />
         )}
         <Area
-          type="monotone" dataKey="value" name={name} stroke={c} strokeWidth={2}
-          fill="url(#pf-area)" dot={data.length <= 31 ? { r: 2.2, strokeWidth: 0, fill: c } : false}
-          activeDot={{ r: 5 }} {...ANIM}
+          type="monotone" dataKey="value" name={name} stroke={c} strokeWidth={3}
+          fill="url(#pf-area)"
+          dot={data.length <= 40 ? { r: 3, strokeWidth: 2, stroke: c, fill: theme.surface } : false}
+          activeDot={{ r: 5.5 }} {...ANIM}
         >
-          <LabelList dataKey="value" content={lastValueLabel(data.length, theme.label, narrow ? 11 : 12.5)} />
+          {showPointLabels ? (
+            <LabelList dataKey="value" position="top" offset={9} formatter={fmtCompact}
+              fill={theme.label} fontSize={10.5} fontWeight={700} />
+          ) : (
+            <LabelList dataKey="value" content={lastValueLabel(data.length, theme.label, narrow ? 11 : 12.5, fmt)} />
+          )}
         </Area>
+        {peak && (
+          <ReferenceDot
+            x={peak.name} y={peak.value} r={4} fill={theme.surface} stroke={c} strokeWidth={2}
+            label={{ value: `pico ${fmt(peak.value)}`, position: 'top', fill: theme.tick, fontSize: 10.5, fontWeight: 700 }}
+          />
+        )}
         {last && <ReferenceDot x={last.name} y={last.value} r={4.5} fill={c} stroke={theme.surface} strokeWidth={2} />}
       </AreaChart>
     </ResponsiveContainer>
   )
 }
 
-// --- Evolução comparada (multi-série). ---
+// --- Evolução comparada (multi-série, legenda liga/desliga). ---
+// Sem rótulo de valor na ponta: com séries próximas eles colidem — a legenda
+// nomeia e o tooltip (com % vs. medida principal) detalha.
 
-function lineBody(data, lines, narrow, theme, height) {
+function lineBody(data, lines, narrow, theme, height, money, hidden, onToggle) {
   const tick = { fontSize: 11.5, fill: theme.tick }
+  const fmt = money ? fmtMoneyCompact : fmtCompact
+  const showDots = data.length <= 40
+  // Poucos pontos: valor em cima de cada ponto, na cor da série. Muitos pontos:
+  // valor na ponta de cada linha, com anti-colisão quando as séries convergem.
+  const showPointLabels = data.length <= 16 && !narrow
+  const offsets = showPointLabels ? {} : endLabelOffsets(data, lines, hidden, height)
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <LineChart data={data} margin={{ top: 4, right: 56, left: 4, bottom: 4 }}>
+      <LineChart data={data} margin={{ top: 22, right: showPointLabels ? 24 : money ? 88 : 68, left: 4, bottom: 4 }}>
         <CartesianGrid vertical={false} stroke={theme.grid} />
-        <XAxis dataKey="name" tick={tick} tickLine={false} axisLine={false} minTickGap={28} tickMargin={8} />
-        <YAxis tickFormatter={fmtCompact} tick={tick} tickLine={false} axisLine={false} width={52} />
-        <Tooltip content={tooltip} cursor={{ stroke: theme.borderStrong }} />
-        {legendTop}
+        <XAxis
+          dataKey="name" tick={tick} tickLine={false} axisLine={{ stroke: theme.axis, strokeWidth: 2 }}
+          minTickGap={28} tickMargin={8}
+          padding={showPointLabels ? { left: 28, right: 28 } : undefined}
+        />
+        <YAxis tickFormatter={fmt} tick={tick} tickLine={false} axisLine={{ stroke: theme.axis, strokeWidth: 2 }} width={money ? 74 : 52} />
+        <Tooltip content={<ChartTooltip money={money} />} cursor={{ stroke: theme.brand1, strokeWidth: 1, strokeDasharray: '4 4' }} />
+        {legendBottom(hidden, onToggle)}
         {lines.map(({ key, name }, i) => {
           const c = theme.palette[i % theme.palette.length]
           return (
             <Line
-              key={key} type="monotone" dataKey={key} name={name} stroke={c} strokeWidth={2}
-              dot={false} activeDot={{ r: 4.5 }} {...ANIM}
+              key={key} type="monotone" dataKey={key} name={name} stroke={c} strokeWidth={3}
+              hide={hidden.has(name)}
+              dot={showDots ? { r: 2.6, strokeWidth: 1.8, stroke: c, fill: theme.surface } : false}
+              activeDot={{ r: 5 }} {...ANIM}
             >
-              <LabelList dataKey={key} content={lastValueLabel(data.length, theme.label, narrow ? 10 : 11.5)} />
+              {showPointLabels ? (
+                <LabelList dataKey={key} position="top" offset={9} formatter={fmtCompact}
+                  fill={c} fontSize={10} fontWeight={700} />
+              ) : (
+                <LabelList dataKey={key} content={lastValueLabel(data.length, theme.label, narrow ? 10 : 11.5, fmt, offsets[key] || 0)} />
+              )}
             </Line>
           )
         })}
@@ -150,65 +295,61 @@ function lineBody(data, lines, narrow, theme, height) {
   )
 }
 
-// --- Ranking: sem eixo/grade (o valor está na ponta), posição 1º/2º/3º e trilha. ---
+// --- Ranking: colunas verticais (maior → menor) com pill de valor no topo. ---
 
-const rankTick = (theme, narrow) =>
-  function RankTick({ x, y, payload, index }) {
-    const i = index ?? payload?.index ?? 0
-    return (
-      <g transform={`translate(${x},${y})`}>
-        <text x={-8} y={0} dy={4} textAnchor="end" fontSize={narrow ? 11 : 12.5}>
-          <tspan fill={theme.tick} fontWeight={700}>{i + 1}º </tspan>
-          <tspan fill={theme.label}>{trunc(payload.value, narrow ? 12 : 20)}</tspan>
-        </text>
-      </g>
-    )
-  }
-
-function rankBody(data, measure, narrow, theme, height, onDrill) {
+function rankBody(data, measure, narrow, theme, height, onDrill, money) {
   const click = onDrill ? (d) => onDrill(d?.name ?? d?.payload?.name) : undefined
+  const fmt = money ? fmtMoneyCompact : fmtCompact
+  const total = data.reduce((a, d) => a + (d.value || 0), 0)
+  const showPills = data.length <= 25 && !narrow
+  const stagger = data.length > 8 // colunas estreitas: alterna a altura das pills
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <BarChart data={data} layout="vertical" margin={{ top: 4, right: 64, left: 4, bottom: 4 }} barCategoryGap="30%">
-        <BarGradients palette={theme.palette} />
-        <XAxis type="number" hide domain={[0, 'dataMax']} />
+      <BarChart data={data} margin={{ top: showPills ? (stagger ? 44 : 28) : 8, right: 12, left: 4, bottom: 4 }} barCategoryGap="28%">
+        <BrandBarGradient theme={theme} />
+        <CartesianGrid vertical={false} stroke={theme.grid} />
+        <XAxis {...xAxisCat(data, theme, narrow)} />
         <YAxis
-          type="category" dataKey="name" width={narrow ? 118 : 190}
-          tick={rankTick(theme, narrow)} tickLine={false} axisLine={false}
+          type="number" tickFormatter={fmt} tick={{ fontSize: 11.5, fill: theme.tick }}
+          tickLine={false} axisLine={{ stroke: theme.axis, strokeWidth: 2 }} width={money ? 74 : 52}
         />
-        <Tooltip content={tooltip} cursor={{ fill: theme.cursorFill }} />
+        <Tooltip content={<ChartTooltip money={money} total={total} />} cursor={{ fill: theme.cursorFill }} />
         <Bar
-          dataKey="value" name={measure} fill="url(#pf-bar-0)" radius={[0, 7, 7, 0]}
-          maxBarSize={26} background={{ fill: theme.track, radius: [0, 7, 7, 0] }}
-          onClick={click} {...ANIM}
+          dataKey="value" name={measure} fill="url(#pf-brand-bar)" radius={[6, 6, 0, 0]}
+          maxBarSize={46} onClick={click} {...ANIM}
         >
-          <LabelList dataKey="value" position="right" formatter={fmtCompact} fill={theme.label}
-            fontSize={narrow ? 11 : 12} fontWeight={700} />
+          {showPills && <LabelList dataKey="value" content={pillLabel(fmt, 10, stagger)} />}
         </Bar>
       </BarChart>
     </ResponsiveContainer>
   )
 }
 
-// --- Comparativo multi-medida (barras agrupadas). ---
+// --- Comparativo multi-medida: colunas agrupadas, legenda embaixo. ---
 
-function groupedBarBody(data, bars, narrow, theme, height, onDrill) {
-  const tick = { fontSize: 11.5, fill: theme.tick }
+function groupedBarBody(data, bars, narrow, theme, height, onDrill, money, hidden, onToggle) {
   const click = onDrill ? (d) => onDrill(d?.name ?? d?.payload?.name) : undefined
+  const fmt = money ? fmtMoneyCompact : fmtCompact
+  // Pills quando o total de colunas dá espaço (alturas diferentes evitam colisão
+  // dentro do grupo; entre grupos o espaçamento resolve).
+  const visible = bars.filter(({ name }) => !hidden.has(name)).length
+  const showPills = !narrow && data.length * Math.max(visible, 1) <= 30
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <BarChart data={data} layout="vertical" margin={{ top: 4, right: 56, left: 4, bottom: 4 }} barCategoryGap="22%">
+      <BarChart data={data} margin={{ top: showPills ? 26 : 8, right: 12, left: 4, bottom: 4 }} barCategoryGap="24%" barGap={3}>
         <BarGradients palette={theme.palette} />
-        <CartesianGrid horizontal={false} stroke={theme.grid} />
-        <XAxis type="number" tickFormatter={fmtCompact} tick={tick} tickLine={false} axisLine={false} />
-        <YAxis type="category" dataKey="name" width={narrow ? 96 : 150} tick={tick} tickLine={false} axisLine={false} />
-        <Tooltip content={tooltip} cursor={{ fill: theme.cursorFill }} />
-        {legendTop}
+        <CartesianGrid vertical={false} stroke={theme.grid} />
+        <XAxis {...xAxisCat(data, theme, narrow)} />
+        <YAxis
+          type="number" tickFormatter={fmt} tick={{ fontSize: 11.5, fill: theme.tick }}
+          tickLine={false} axisLine={{ stroke: theme.axis, strokeWidth: 2 }} width={money ? 74 : 52}
+        />
+        <Tooltip content={<ChartTooltip money={money} />} cursor={{ fill: theme.cursorFill }} />
+        {legendBottom(hidden, onToggle)}
         {bars.map(({ key, name }, i) => (
           <Bar key={key} dataKey={key} name={name} fill={`url(#pf-bar-${i % theme.palette.length})`}
-            radius={[0, 5, 5, 0]} maxBarSize={18} onClick={click} {...ANIM}>
-            <LabelList dataKey={key} position="right" formatter={fmtCompact} fill={theme.label}
-              fontSize={narrow ? 9 : 10.5} />
+            hide={hidden.has(name)} radius={[6, 6, 0, 0]} maxBarSize={30} onClick={click} {...ANIM}>
+            {showPills && <LabelList dataKey={key} content={pillLabel(fmt, 9.5)} />}
           </Bar>
         ))}
       </BarChart>
@@ -216,81 +357,44 @@ function groupedBarBody(data, bars, narrow, theme, height, onDrill) {
   )
 }
 
-// --- Rosca interativa: fatia apontada cresce e o centro mostra o valor dela. ---
+// --- Participação no total: lista de barras de proporção (substitui a rosca). ---
+// A identidade fica no rótulo da linha e a magnitude no comprimento + % — legível
+// para qualquer visão de cor, e cada linha filtra o painel ao clicar.
 
-function Donut({ data, theme, height, onDrill }) {
-  const [active, setActive] = useState(null)
+const fmtPct = (p) => `${p.toFixed(p < 10 ? 1 : 0).replace('.', ',')}%`
+
+function ShareList({ data, onDrill, money }) {
   const total = data.reduce((a, b) => a + (b.value || 0), 0)
-  const colorAt = (d, i) => (d.other ? theme.tick : theme.palette[i % theme.palette.length])
-  const click = onDrill ? (name) => onDrill(name) : undefined
-  const cur = active != null ? data[active] : null
-
-  const centerLabel = ({ viewBox }) => {
-    const { cx, cy } = viewBox
-    const value = cur ? cur.value : total
-    const caption = cur ? trunc(cur.name, 16) : 'total'
-    const pctTxt = cur && total ? ` · ${Math.round((cur.value / total) * 100)}%` : ''
-    return (
-      <g>
-        <text x={cx} y={cy - 5} textAnchor="middle" fill={theme.label} fontSize={22} fontWeight={700}>
-          {fmtCompact(value)}
-        </text>
-        <text x={cx} y={cy + 16} textAnchor="middle" fill={theme.tick} fontSize={11}>
-          {caption}{pctTxt}
-        </text>
-      </g>
-    )
-  }
-
+  const fmt = money ? fmtMoney : (v) => fmtNum(v)
   return (
-    <div className="pie-wrap">
-      <div className="pie-donut">
-        <ResponsiveContainer width="100%" height={height}>
-          <PieChart margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
-            <Pie
-              data={data} dataKey="value" nameKey="name" cx="50%" cy="50%"
-              outerRadius="84%" innerRadius="60%" cornerRadius={4}
-              paddingAngle={data.length > 1 ? 2.5 : 0} stroke={theme.surface} strokeWidth={2}
-              onMouseEnter={(_, i) => setActive(i)} onMouseLeave={() => setActive(null)}
-              onClick={click ? (d) => !d?.payload?.other && click(d?.name ?? d?.payload?.name) : undefined}
-              {...ANIM}
-            >
-              {data.map((d, i) => (
-                <Cell key={i} fill={colorAt(d, i)} cursor={click && !d.other ? 'pointer' : 'default'} />
-              ))}
-              <Label content={centerLabel} position="center" />
-            </Pie>
-            <Tooltip content={tooltip} />
-          </PieChart>
-        </ResponsiveContainer>
-      </div>
-      <ul className="pie-legend">
-        {data.map((d, i) => {
-          const clickable = click && !d.other
-          return (
-            <li
-              key={i}
-              className={`${clickable ? 'clickable' : ''} ${active === i ? 'active' : ''}`}
-              onMouseEnter={() => setActive(i)}
-              onMouseLeave={() => setActive(null)}
-              {...(clickable
-                ? {
-                    role: 'button', tabIndex: 0,
-                    'aria-label': `Filtrar por ${d.name}`,
-                    onClick: () => click(d.name),
-                    onKeyDown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); click(d.name) } },
-                  }
-                : {})}
-            >
-              <span className="pl-dot" style={{ background: colorAt(d, i) }} />
-              <span className="pl-name" title={d.name}>{d.name}</span>
-              <span className="pl-val">{fmtNum(d.value)}</span>
-              <span className="pl-pct">{total ? Math.round((d.value / total) * 100) : 0}%</span>
-            </li>
-          )
-        })}
-      </ul>
-    </div>
+    <ul className="dist-list">
+      {data.map((d) => {
+        const pct = total ? (d.value / total) * 100 : 0
+        const clickable = !!onDrill && !d.other
+        return (
+          <li
+            key={d.name}
+            className={`dist-item${clickable ? ' clickable' : ''}${d.other ? ' other' : ''}`}
+            {...(clickable
+              ? {
+                  role: 'button', tabIndex: 0,
+                  'aria-label': `Filtrar por ${d.name}`,
+                  onClick: () => onDrill(d.name),
+                  onKeyDown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onDrill(d.name) } },
+                }
+              : {})}
+          >
+            <div className="dist-row">
+              <span className="dist-name" title={d.name}>{d.name}</span>
+              <span className="dist-val">{fmt(d.value)}<em>{fmtPct(pct)}</em></span>
+            </div>
+            <div className="dist-track">
+              <div className="dist-fill" style={{ width: `${pct}%` }} />
+            </div>
+          </li>
+        )
+      })}
+    </ul>
   )
 }
 
@@ -320,7 +424,7 @@ function Toolbar({ exportRef, title, onToggleFull, fullIcon }) {
     setBusy(true)
     try {
       const lib = await import('html-to-image') // sob demanda (fora do bundle inicial)
-      const bg = readVar('--surface', '#ffffff')
+      const bg = readVar('--surface-solid', '#ffffff')
       const opt = {
         pixelRatio: 2, backgroundColor: bg, cacheBust: true,
         filter: (n) => !(n.classList && n.classList.contains('no-print')),
@@ -360,7 +464,23 @@ function Toolbar({ exportRef, title, onToggleFull, fullIcon }) {
   )
 }
 
-function ChartCard({ Icon, title, drillable, wide, height, modalHeight, renderBody, plotLabel }) {
+// Cabeçalho de painel no padrão do design system: ícone em tile gradiente,
+// título e subtítulo de contexto.
+function PanelHeader({ Icon, grad, title, subtitle }) {
+  return (
+    <div className="panel-header">
+      <span className="panel-icon" style={{ '--panel-grad': `var(--grad-${grad})` }} aria-hidden="true">
+        {Icon && <Icon size={17} strokeWidth={2.2} />}
+      </span>
+      <div className="panel-heading">
+        <h3 className="panel-title">{title}</h3>
+        {subtitle && <p className="panel-subtitle">{subtitle}</p>}
+      </div>
+    </div>
+  )
+}
+
+function ChartCard({ Icon, grad, title, subtitle, drillable, wide, height, modalHeight, renderBody, plotLabel }) {
   const [full, setFull] = useState(false)
   const plotAria = plotLabel ? { role: 'img', 'aria-label': plotLabel } : {}
   const cardRef = useRef(null)
@@ -380,10 +500,7 @@ function ChartCard({ Icon, title, drillable, wide, height, modalHeight, renderBo
     <div className={`card chart-card${drillable ? ' drillable' : ''}${wide ? ' wide' : ''}`}>
       <Toolbar exportRef={cardRef} title={title} onToggleFull={() => setFull(true)} fullIcon="open" />
       <div className="chart-export" ref={cardRef}>
-        <h3>
-          {Icon && <Icon size={16} className="chart-ic" />}{title}
-          {drillable && <span className="drill-hint no-print">clique para filtrar</span>}
-        </h3>
+        <PanelHeader Icon={Icon} grad={grad} title={title} subtitle={subtitle} />
         <div className="chart-body" {...plotAria}>{renderBody(height)}</div>
       </div>
 
@@ -392,7 +509,7 @@ function ChartCard({ Icon, title, drillable, wide, height, modalHeight, renderBo
           <div className="chart-modal-card" ref={modalCardRef} tabIndex={-1} onClick={(e) => e.stopPropagation()}>
             <Toolbar exportRef={modalRef} title={title} onToggleFull={() => setFull(false)} fullIcon="close" />
             <div className="chart-export" ref={modalRef}>
-              <h3>{Icon && <Icon size={16} className="chart-ic" />}{title}</h3>
+              <PanelHeader Icon={Icon} grad={grad} title={title} subtitle={subtitle} />
               <div className="chart-body" {...plotAria}>{renderBody(modalHeight)}</div>
             </div>
           </div>
@@ -416,36 +533,62 @@ function useNarrow() {
 export default function ChartWidget({ chart, onDrill }) {
   const narrow = useNarrow()
   const theme = useChartTheme()
-  const Icon = HeaderIcon[chart.type]
-  const title = chart.gran ? `${chart.title} · por ${GRAN_WORD[chart.gran]}` : chart.title
+  const { Icon, grad } = HEADER[chart.type] || {}
+
+  // Medida em R$? Liga "R$" em eixos, rótulos, tooltip e lista de participação.
+  const money = isMoneyName(chart.measure) || (chart.measures || []).some(isMoneyName)
+
+  // Séries escondidas pela legenda (clique liga/desliga).
+  const [hidden, setHidden] = useState(() => new Set())
+  const toggleSeries = (name) => {
+    if (!name) return
+    setHidden((prev) => {
+      const next = new Set(prev)
+      if (next.has(name)) next.delete(name)
+      else next.add(name)
+      return next
+    })
+  }
 
   const drillable = !!(onDrill && chart.dim && DRILLABLE.has(chart.type))
   const drill = drillable
     ? (name) => { if (name && name !== 'Outros') onDrill(chart.dim, name) }
     : undefined
 
+  // Contexto no subtítulo (em vez de poluir o título): período, medida e dica de filtro.
+  const subtitle = (() => {
+    const parts = []
+    if (chart.gran) parts.push(`soma por ${GRAN_WORD[chart.gran]}`)
+    if (chart.type === 'dist') parts.push('participação no total')
+    if (chart.type === 'lines' || chart.type === 'bars') parts.push('clique na legenda para ocultar séries')
+    if (drillable && chart.type !== 'lines' && chart.type !== 'bars') parts.push('clique para filtrar')
+    return parts.join(' · ') || null
+  })()
+
   const empty = !chart.data || !chart.data.length
-  // Evolução ocupa a linha inteira; rankings compridos também.
-  const wide = chart.type === 'line' || chart.type === 'lines' || (chart.type === 'bar' && !empty && chart.data.length > 8)
+  // Evolução ocupa a linha inteira; colunas com muitas categorias também.
+  const wide =
+    chart.type === 'line' || chart.type === 'lines' ||
+    (chart.type === 'bar' && !empty && chart.data.length > 6) ||
+    (chart.type === 'bars' && !empty && chart.data.length > 4)
 
   let height = narrow ? 260 : 330
-  if (chart.type === 'bar') height = Math.max(220, chart.data.length * 44 + 36)
-  else if (chart.type === 'bars') height = Math.max(240, chart.data.length * 48 + 64)
-  else if (chart.type === 'pie') height = narrow ? 250 : 290
+  if (chart.type === 'bar') height = narrow ? 300 : 360
+  else if (chart.type === 'bars') height = narrow ? 320 : 380
   const modalHeight = Math.min(720, Math.round((typeof window !== 'undefined' ? window.innerHeight : 800) * 0.72))
 
   const renderBody = (h) => {
     switch (chart.type) {
       case 'line':
-        return areaBody(chart.data, chart.measure, narrow, theme, h)
+        return areaBody(chart.data, chart.measure, narrow, theme, h, money)
       case 'lines':
-        return lineBody(chart.data, chart.measures.map((m) => ({ key: m, name: m })), narrow, theme, h)
+        return lineBody(chart.data, chart.measures.map((m) => ({ key: m, name: m })), narrow, theme, h, money, hidden, toggleSeries)
       case 'bar':
-        return rankBody(chart.data, chart.measure, narrow, theme, h, drill)
+        return rankBody(chart.data, chart.measure, narrow, theme, h, drill, money)
       case 'bars':
-        return groupedBarBody(chart.data, chart.measures.map((m) => ({ key: m, name: m })), narrow, theme, h, drill)
-      case 'pie':
-        return <Donut data={chart.data} theme={theme} height={h} onDrill={drill} />
+        return groupedBarBody(chart.data, chart.measures.map((m) => ({ key: m, name: m })), narrow, theme, h, drill, money, hidden, toggleSeries)
+      case 'dist':
+        return <ShareList data={chart.data} onDrill={drill} money={money} />
       default:
         return null
     }
@@ -454,7 +597,7 @@ export default function ChartWidget({ chart, onDrill }) {
   if (empty) {
     return (
       <div className="card chart-card">
-        <h3>{Icon && <Icon size={16} className="chart-ic" />}{title}</h3>
+        <PanelHeader Icon={Icon} grad={grad} title={chart.title} />
         <div className="empty-chart">Sem dados para exibir</div>
       </div>
     )
@@ -462,8 +605,9 @@ export default function ChartWidget({ chart, onDrill }) {
 
   return (
     <ChartCard
-      Icon={Icon} title={title} drillable={drillable} wide={wide} height={height} modalHeight={modalHeight}
-      renderBody={renderBody} plotLabel={chart.type === 'pie' ? undefined : title}
+      Icon={Icon} grad={grad} title={chart.title} subtitle={subtitle} drillable={drillable}
+      wide={wide} height={height} modalHeight={modalHeight}
+      renderBody={renderBody} plotLabel={chart.type === 'dist' ? undefined : chart.title}
     />
   )
 }

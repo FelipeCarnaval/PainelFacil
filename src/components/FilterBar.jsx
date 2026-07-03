@@ -1,4 +1,4 @@
-import { SlidersHorizontal } from 'lucide-react'
+import { SlidersHorizontal, RotateCcw } from 'lucide-react'
 import MultiSelect from './MultiSelect'
 import { isValidDate } from '../lib/utils'
 
@@ -40,7 +40,8 @@ export default function FilterBar({
         </div>
       )}
       {hasAny && (
-        <button className="btn ghost sm" onClick={() => { setDimFilters({}); setDateFrom(null); setDateTo(null) }}>
+        <button className="btn ghost sm" title="Volta todos os filtros para 'Todos' e limpa datas" onClick={() => { setDimFilters({}); setDateFrom(null); setDateTo(null) }}>
+          <RotateCcw size={14} />
           Limpar filtros
         </button>
       )}

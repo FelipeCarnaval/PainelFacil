@@ -1,9 +1,31 @@
-import { useId } from 'react'
+import { useId, useEffect, useRef } from 'react'
 
 // Mini-gráfico de tendência, SVG puro (sem dependências). A cor vem do
 // `currentColor` — quem usa define `style={{ color }}` ou a prop `color`.
+// Anima o traçado (stroke-dasharray) na primeira renderização para dar movimento.
 export default function Sparkline({ data, color = 'currentColor', height = 34 }) {
   const uid = useId().replace(/:/g, '')
+  const pathRef = useRef(null)
+  
+  // Anima o traçado da linha na montagem — stroke-dashoffset de 100% → 0 em ~800ms.
+  // Respeita `prefers-reduced-motion` do sistema.
+  useEffect(() => {
+    if (!pathRef.current || !data || data.length < 2) return
+    const prefersReduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    if (prefersReduced) return
+    
+    const len = pathRef.current.getTotalLength?.()
+    if (!len) return
+    
+    pathRef.current.style.strokeDasharray = len
+    pathRef.current.style.strokeDashoffset = len
+    pathRef.current.style.transition = `stroke-dashoffset 800ms cubic-bezier(0.34, 1.56, 0.64, 1)`
+    
+    // Força reflow para disparar a animação
+    pathRef.current.offsetHeight
+    pathRef.current.style.strokeDashoffset = '0'
+  }, [data])
+  
   if (!data || data.length < 2) return null
 
   const W = 100, H = 32, PAD = 3
@@ -30,6 +52,7 @@ export default function Sparkline({ data, color = 'currentColor', height = 34 })
       </defs>
       <path d={area} fill={`url(#sg${uid})`} stroke="none" />
       <path
+        ref={pathRef}
         d={line} fill="none" stroke="currentColor" strokeWidth="1.7"
         strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke"
       />

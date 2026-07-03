@@ -104,6 +104,13 @@ export const fmtCompact = (n) => {
   return fmtNum(n, 0)
 }
 
+// Medidas monetárias detectadas pelo nome — compartilhado por cards, gráficos e tooltips.
+export const MONEY_RX = /valor|vlr|r\$|receita|custo|despesa|glosa|pago|faturad|apresentad|repasse|montante|saldo/i
+export const isMoneyName = (name) => MONEY_RX.test(String(name || ''))
+
+export const fmtMoney = (n) => (n == null || isNaN(n) ? '—' : `R$ ${fmtNum(n)}`)
+export const fmtMoneyCompact = (n) => (n == null || isNaN(n) ? '—' : `R$ ${fmtCompact(n)}`)
+
 export const fmtDate = (d) =>
   d instanceof Date && !isNaN(d.getTime()) ? d.toLocaleDateString('pt-BR') : '—'
 

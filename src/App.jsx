@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { LayoutDashboard, Moon, Sun, Plus, AlertTriangle, Settings2, Gauge, Loader2, Printer, ClipboardList, Check } from 'lucide-react'
+import { LayoutDashboard, Moon, Sun, Plus, AlertTriangle, Settings2, Loader2, Printer, ClipboardList, Check } from 'lucide-react'
 import * as engine from './services/analysisClient'
 import { buildSummary } from './lib/summary'
 import { useDataset } from './hooks/useDataset'
@@ -11,7 +11,6 @@ import ChartControls from './components/ChartControls'
 import OverridePanel from './components/OverridePanel'
 import Dashboard from './components/Dashboard'
 import DashboardSkeleton from './components/DashboardSkeleton'
-import PerfPanel from './components/PerfPanel'
 import ErrorBoundary from './components/ErrorBoundary'
 
 const defaultTableState = () => ({ sort: { col: null, dir: 1 }, search: '', page: 0 })
@@ -19,7 +18,6 @@ const defaultTableState = () => ({ sort: { col: null, dir: 1 }, search: '', page
 export default function App() {
   const [theme, setTheme] = useState(() => localStorage.getItem('pf-theme') || 'light')
   const [showPanel, setShowPanel] = useState(false)
-  const [showPerf, setShowPerf] = useState(false)
   const [dimFilters, setDimFilters] = useState({})
   const [dateFrom, setDateFrom] = useState(null)
   const [dateTo, setDateTo] = useState(null)
@@ -29,7 +27,6 @@ export default function App() {
   const [copied, setCopied] = useState(false)
   const [viewBusy, setViewBusy] = useState(false)
   const [viewError, setViewError] = useState(null)
-  const [perf, setPerf] = useState(null)
   const viewSeq = useRef(0)
 
   const ds = useDataset()
@@ -78,7 +75,6 @@ export default function App() {
       .then((v) => {
         if (cancelled || my !== viewSeq.current) return
         setView(v)
-        setPerf({ ...v.timings, cached: !!v.cached, analyzeMs: meta.analyzeMs, rows: meta.rowCount })
       })
       .catch((e) => {
         if (cancelled || my !== viewSeq.current) return
@@ -211,18 +207,10 @@ export default function App() {
                 <span className="info-file">{fileName}</span>
                 <span className="info-meta">
                   {(view ? view.count : meta.rowCount).toLocaleString('pt-BR')} de {meta.rowCount.toLocaleString('pt-BR')} registros
-                  {meta.headerRows > 1 && ` · cabeçalho de ${meta.headerRows} linhas combinado`}
-                  {meta.droppedTop > 0 && ` · ${meta.droppedTop} linha(s) de topo ignoradas`}
-                  {meta.droppedTotals > 0 && ` · ${meta.droppedTotals} linha(s) de total removidas`}
                   {working && <span className="busy-badge" role="status"><Loader2 size={13} className="spin" /> atualizando…</span>}
                 </span>
               </div>
               <div className="info-actions no-print">
-                <div className="type-chips">
-                  {meta.profiles.map((p) => (
-                    <span key={p.name} className={`chip chip-${p.type}`} title={`${p.name} — ${p.type}`}>{p.name}</span>
-                  ))}
-                </div>
                 {meta.rowCount > 0 && (
                   <>
                     <button
@@ -236,9 +224,6 @@ export default function App() {
                     </button>
                   </>
                 )}
-                <button className={`btn ghost sm ${showPerf ? 'active' : ''}`} aria-expanded={showPerf} onClick={() => setShowPerf((v) => !v)}>
-                  <Gauge size={15} /> Desempenho
-                </button>
                 <button className={`btn ghost sm ${showPanel ? 'active' : ''}`} aria-expanded={showPanel} onClick={() => setShowPanel((v) => !v)}>
                   <Settings2 size={15} /> Ajustar dados
                 </button>
@@ -252,8 +237,6 @@ export default function App() {
                 montar a série temporal. Pode desfazer em <b>“Ajustar dados”</b>.
               </div>
             )}
-
-            {showPerf && <div className="no-print"><PerfPanel perf={perf} /></div>}
 
             {showPanel && (
               <div className="no-print">
@@ -287,7 +270,7 @@ export default function App() {
                     // "Mostrar top" só quando existe ranking E alguma dimensão com
                     // itens suficientes para o corte fazer diferença na tela.
                     showTopN={
-                      meta.dash.widgets.some((w) => ['bar', 'bars', 'pie'].includes(w.type)) &&
+                      meta.dash.widgets.some((w) => ['bar', 'bars', 'dist'].includes(w.type)) &&
                       meta.dash.dims.some((d) => (meta.dimOptions[d]?.length || 0) > 6)
                     }
                     hasDate={!!meta.dash.dateCol}
@@ -316,7 +299,7 @@ export default function App() {
         )}
       </main>
 
-      <footer className="foot no-print">PainelFácil · processamento 100% local · feito para testar em casa</footer>
+      <footer className="foot no-print">PainelFácil · processamento 100% local · seus dados nunca saem do navegador</footer>
     </div>
   )
 }

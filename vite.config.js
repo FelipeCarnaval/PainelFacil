@@ -15,8 +15,8 @@ export default defineConfig(({ command }) => ({
         short_name: 'PainelFácil',
         description: 'Dashboards automáticos a partir de qualquer planilha (Excel/CSV) — 100% local.',
         lang: 'pt-BR',
-        theme_color: '#1e3a5f',
-        background_color: '#f3f5f9',
+        theme_color: '#1d4ed8',
+        background_color: '#eef1f8',
         display: 'standalone',
         icons: [
           { src: 'pwa-icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },

@@ -24,6 +24,46 @@ function comparableGroup(measures, primaryName) {
   return group.length >= 2 ? group.map((m) => m.name) : []
 }
 
+// Detecta taxas automáticas no dataset hospitalar/financeiro. Procura por padrões
+// como "Glosa"/"Apresentado", "Pago"/"Apresentado", "Recusado"/"Solicitado", etc.,
+// e retorna um array de pares [numerador, denominador] para criar KPIs de taxa.
+// Ex.: { Glosa: 5000, Apresentado: 100000 } → ['Glosa', 'Apresentado'] → Taxa de Glosa 5%
+function detectRates(measures) {
+  const rates = []
+  const measured = new Set(measures.map((m) => m.name.toLowerCase()))
+  
+  // Padrões [numerador, denominador] — detecta em ordem de prioridade.
+  const patterns = [
+    ['glosa', 'apresentado'],      // Taxa de glosa (sistema de saúde)
+    ['pago', 'apresentado'],       // Taxa de pagamento
+    ['negado', 'apresentado'],     // Taxa de negação/recusa
+    ['recusado', 'solicitado'],    // Taxa de recusa
+    ['cancelado', 'solicitado'],   // Taxa de cancelamento
+    ['erro', 'processado'],        // Taxa de erro
+    ['devolvido', 'enviado'],      // Taxa de devolução
+    ['devolvido', 'apresentado'],  // Taxa de devolução (alt)
+    ['desconto', 'faturado'],      // Taxa de desconto
+    ['imposto', 'faturado'],       // Taxa de impostos
+    ['perda', 'total'],            // Taxa de perda
+  ]
+  
+  for (const [num, denom] of patterns) {
+    const hasNum = [...measured].find((m) => m.includes(num))
+    const hasDenom = [...measured].find((m) => m.includes(denom))
+    
+    if (hasNum && hasDenom && hasNum !== hasDenom) {
+      const numFull = measures.find((m) => m.name.toLowerCase().includes(num))?.name
+      const denomFull = measures.find((m) => m.name.toLowerCase().includes(denom))?.name
+      if (numFull && denomFull && !rates.some((r) => r[0] === numFull || r[1] === denomFull)) {
+        rates.push([numFull, denomFull])
+        if (rates.length >= 2) break // Máximo 2 taxas automáticas
+      }
+    }
+  }
+  
+  return rates
+}
+
 // opts.primaryMeasure (opcional, Fase G): força a medida principal escolhida pelo usuário.
 export function buildDashboard(profiles, data, opts = {}) {
   const numbers = profiles.filter((p) => p.type === 'number' && !ID_RX.test(p.name))
@@ -68,6 +108,20 @@ export function buildDashboard(profiles, data, opts = {}) {
   for (const a of averages.slice(0, 2)) {
     items.push({ label: `Média · ${a.name}`, agg: 'avg', measure: a.name, kind: 'num', percent: a.stats.isPercent })
   }
+  
+  // KPIs automáticos de taxa (glosa, recebimento, etc.) — hospitalar e financeiro.
+  const rates = detectRates(measures)
+  for (const [num, denom] of rates) {
+    const rateName = num.replace(/\s*(de|do|da)\s*/gi, ' ').trim()
+    items.push({
+      label: `Taxa de ${rateName}`,
+      agg: 'rate',
+      measures: [num, denom],
+      kind: 'num',
+      percent: true,
+    })
+  }
+  
   widgets.push({ type: 'kpis', items })
 
   // Grupo de medidas comparáveis (R$ apresentado × glosa × pago, etc.).
@@ -91,13 +145,13 @@ export function buildDashboard(profiles, data, opts = {}) {
       widgets.push({ type: 'bar', title: `Top ${dims[0].name} · ${primary}`, dim: dims[0].name, measure: primary })
     }
   }
-  // Distribuição (rosca)
-  const pieDim = dims[1] || dims[0]
-  if (pieDim && primary) {
-    widgets.push({ type: 'pie', title: `${primary} por ${pieDim.name}`, dim: pieDim.name, measure: primary })
+  // Participação no total (barras de proporção — mais legível que pizza/rosca).
+  const distDim = dims[1] || dims[0]
+  if (distDim && primary) {
+    widgets.push({ type: 'dist', title: `${primary} por ${distDim.name}`, dim: distDim.name, measure: primary })
   }
   // Ranking detalhado: a dimensão de MAIOR cardinalidade (procedimento, médico,
-  // cliente…), onde o controle "Top N" realmente importa. A rosca resume; este lista.
+  // cliente…), onde o controle "Top N" realmente importa. A participação resume; este lista.
   const bigDim = dims[dims.length - 1]
   if (bigDim && primary && bigDim.stats.distinct >= 8 && bigDim.name !== dims[0].name) {
     widgets.push({ type: 'bar', title: `Top ${bigDim.name} · ${primary}`, dim: bigDim.name, measure: primary })
